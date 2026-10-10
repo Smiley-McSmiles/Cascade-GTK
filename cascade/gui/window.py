@@ -296,7 +296,7 @@ class MainWindow(Adw.ApplicationWindow):
         bar.append(self.status_extra)
 
         def item(icon, tooltip):
-            b = Gtk.Box(spacing=5)
+            b = Gtk.Box(spacing=5, valign=Gtk.Align.CENTER)
             img = Gtk.Image(icon_name=icon)
             lbl = Gtk.Label()
             lbl.add_css_class("numeric")

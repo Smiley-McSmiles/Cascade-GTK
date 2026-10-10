@@ -126,10 +126,11 @@ button.filter-active { color: @accent_color; }
   /* tall enough that nothing touches the window's rounded bottom corners */
   min-height: 38px;
   padding: 4px 14px 6px 14px;
-  font-size: 0.92em;
   border-top: 1px solid alpha(@borders, 0.5);
 }
-.statusbar > * { margin-top: 0; margin-bottom: 0; }
+/* no fractional font size here: with some fonts (Adwaita Sans) it rounds the label height below the glyphs and
+   the tops of the digits get cut off; the padding gives the text room either way */
+.statusbar label { padding-top: 2px; padding-bottom: 2px; }
 .statusbar button { min-height: 28px; padding: 0 8px; }
 .statusbar .success image, .statusbar .success label { color: @success_color; }
 .statusbar .error image, .statusbar .error label { color: @error_color; }
