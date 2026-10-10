@@ -1,0 +1,9 @@
+#!/bin/sh
+# runit service for one user.  Copy this directory to /etc/sv/cascaded-USER (the user name comes from the
+# directory name, or set CASCADE_USER in ./conf) and enable it: ln -s /etc/sv/cascaded-USER /var/service/
+[ -r ./conf ] && . ./conf
+USER_NAME=${CASCADE_USER:-$(basename "$(pwd)" | sed 's/^cascaded-//')}
+HOME=$(getent passwd "$USER_NAME" | cut -d: -f6)
+[ -n "$HOME" ] || { echo "cascaded: no such user: $USER_NAME" >&2; exec sleep 60; }
+export HOME
+exec chpst -u "$USER_NAME" @BINDIR@/cascaded --quiet 2>&1

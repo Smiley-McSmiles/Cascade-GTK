@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            python3 python3-libtorrent python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 librsvg2-common \
+            xvfb dbus-x11 shellcheck rpm desktop-file-utils appstream python3-flake8 nodejs
+
+      - name: Lint
+        run: |
+          sh -n install.sh
+          bash -n package.sh
+          shellcheck -s sh -S warning install.sh
+          shellcheck -S warning package.sh
+          python3 -m flake8 --max-line-length 120 --extend-ignore E731,E402,W503,W504,E741,E127,E128 cascade tests tools
+          node --check cascade/webui/static/app.js
+          desktop-file-validate data/io.github.smiley_mcsmiles.Cascade.desktop
+          appstreamcli validate --no-net data/io.github.smiley_mcsmiles.Cascade.metainfo.xml
+
+      - name: Version is the same everywhere
+        run: python3 tools/check_version.py
+
+      - name: Shell completions are up to date
+        run: python3 tools/gen_completions.py --check
+
+      # Real daemons move a real torrent between each other over 127.0.0.1; the GTK smoke test runs under Xvfb.
+      - name: Tests
+        run: xvfb-run -a python3 -m unittest tests.test_cascade -v
+
+      - name: Build every package
+        run: ./package.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: |
+            dist/*.tar.gz
+            dist/*.deb
+            dist/*.rpm
+            dist/*.pkg.tar.xz
+            dist/SHA256SUMS
+            dist/recipes
+          if-no-files-found: error

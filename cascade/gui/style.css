@@ -1,0 +1,136 @@
+/* Cascade - libadwaita refinements.  The web interface (webui/static/app.css) mirrors these. */
+
+/* ---- torrent cards ---- */
+list.torrent-list {
+  background: none;
+  margin: 12px 12px 18px 12px;
+}
+list.torrent-list > row.torrent-card {
+  background-color: @card_bg_color;
+  color: @card_fg_color;
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 6, 0.03), 0 1px 3px 1px rgba(0, 0, 6, 0.07), 0 2px 6px 2px rgba(0, 0, 6, 0.03);
+  margin-bottom: 10px;
+  padding: 0;
+}
+list.torrent-list > row.torrent-card:focus-visible { outline: 2px solid alpha(@accent_color, 0.5); outline-offset: -2px; }
+
+button.torrent-header {
+  padding: 12px 10px 12px 14px;
+  border-radius: 12px;
+  min-height: 0;
+}
+row.torrent-card.expanded button.torrent-header {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.state-icon {
+  border-radius: 999px;
+  padding: 9px;
+  min-width: 16px;
+  min-height: 16px;
+  background-color: alpha(@accent_bg_color, 0.14);
+  color: @accent_color;
+}
+row.state-seeding .state-icon { background-color: alpha(@success_color, 0.15); color: @success_color; }
+row.state-paused .state-icon, row.state-queued .state-icon {
+  background-color: alpha(@window_fg_color, 0.08);
+  color: alpha(@window_fg_color, 0.6);
+}
+row.state-checking .state-icon, row.state-moving .state-icon, row.state-metadata .state-icon {
+  background-color: alpha(@warning_color, 0.16);
+  color: @warning_color;
+}
+row.state-error .state-icon { background-color: alpha(@error_color, 0.15); color: @error_color; }
+
+progressbar.torrent-progress > trough,
+progressbar.torrent-progress > trough > progress { min-height: 6px; border-radius: 3px; }
+row.state-seeding progressbar.torrent-progress > trough > progress { background-color: @success_color; }
+row.state-paused progressbar.torrent-progress > trough > progress,
+row.state-queued progressbar.torrent-progress > trough > progress { background-color: alpha(@window_fg_color, 0.35); }
+row.state-checking progressbar.torrent-progress > trough > progress,
+row.state-metadata progressbar.torrent-progress > trough > progress,
+row.state-moving progressbar.torrent-progress > trough > progress { background-color: @warning_color; }
+row.state-error progressbar.torrent-progress > trough > progress { background-color: @error_color; }
+
+.speed-label { color: @accent_color; font-weight: bold; }
+row.state-seeding .speed-label { color: @success_color; }
+
+.expand-arrow {
+  transition: -gtk-icon-transform 200ms ease;
+  color: alpha(@window_fg_color, 0.55);
+}
+row.expanded .expand-arrow { -gtk-icon-transform: rotate(-180deg); }
+
+.label-chip {
+  font-size: 0.8em;
+  font-weight: bold;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background-color: alpha(@accent_bg_color, 0.14);
+  color: @accent_color;
+}
+
+/* ---- expanded details ---- */
+.torrent-details {
+  padding: 6px 14px 16px 14px;
+  border-top: 1px solid alpha(@borders, 0.6);
+}
+.details-actions button { padding-left: 10px; padding-right: 10px; }
+flowbox.stat-flow > flowboxchild { padding: 0; }
+.stat-tile {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background-color: alpha(@window_fg_color, 0.04);
+}
+.stat-value { font-weight: bold; }
+.torrent-details list.boxed-list { background-color: alpha(@window_fg_color, 0.02); }
+row.error-row .subtitle { color: @error_color; }
+levelbar.file-level > trough > block { min-height: 4px; border-radius: 2px; }
+
+.legend-dot { min-width: 10px; min-height: 10px; border-radius: 3px; }
+.legend-have { background-color: @accent_bg_color; }
+.legend-active { background-color: @success_color; }
+.legend-missing { background-color: alpha(@window_fg_color, 0.12); }
+.sched-normal { background-color: alpha(@success_color, 0.6); }
+.sched-slow { background-color: @warning_color; }
+.sched-paused { background-color: @error_color; }
+
+/* ---- filter bar (rolls down from the header bar) ---- */
+.filter-bar {
+  padding: 8px 12px 10px 12px;
+  background-color: @headerbar_bg_color;
+  border-bottom: 1px solid alpha(@headerbar_shade_color, 1);
+}
+button.filter-chip {
+  border-radius: 999px;
+  padding: 4px 12px;
+  min-height: 0;
+  background-color: alpha(@window_fg_color, 0.07);
+}
+button.filter-chip:hover { background-color: alpha(@window_fg_color, 0.11); }
+button.filter-chip:checked {
+  background-color: @accent_bg_color;
+  color: @accent_fg_color;
+}
+.chip-count {
+  font-size: 0.85em;
+  font-weight: bold;
+  opacity: 0.7;
+}
+button.filter-active { color: @accent_color; }
+
+/* ---- status bar ---- */
+.statusbar {
+  padding: 2px 10px;
+  font-size: 0.92em;
+  border-top: 1px solid alpha(@borders, 0.5);
+}
+.statusbar button { min-height: 26px; padding: 0 8px; }
+.statusbar .success image, .statusbar .success label { color: @success_color; }
+.statusbar .error image, .statusbar .error label { color: @error_color; }
+.statusbar image.warning { color: @warning_color; }
+
+window.drop-target .torrent-list,
+window.drop-target statuspage { opacity: 0.6; }

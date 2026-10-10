@@ -1,0 +1,20 @@
+# systemd system unit: run Cascade as a given user at boot (servers, NAS, seedboxes)
+#   sudo systemctl enable --now cascaded@alice
+# The CLI of that user finds the service automatically (cascade status).
+[Unit]
+Description=Cascade BitTorrent service for %i
+Documentation=man:cascade(1)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=%i
+ExecStart=@BINDIR@/cascaded --quiet
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=Cascade
+GenericName=BitTorrent Client
+Comment=Download and share files with BitTorrent
+Exec=cascade-gtk %U
+Icon=io.github.smiley_mcsmiles.Cascade
+Terminal=false
+Categories=Network;FileTransfer;P2P;GTK;
+Keywords=torrent;bittorrent;magnet;download;p2p;seed;share;
+MimeType=application/x-bittorrent;x-scheme-handler/magnet;
+StartupNotify=true
+StartupWMClass=io.github.smiley_mcsmiles.Cascade
+X-GNOME-UsesNotifications=true

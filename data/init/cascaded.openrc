@@ -1,0 +1,26 @@
+#!/sbin/openrc-run
+# Cascade for one user.  Either set CASCADE_USER in /etc/conf.d/cascaded, or make a per-user link:
+#   ln -s cascaded /etc/init.d/cascaded.alice && rc-update add cascaded.alice default
+name="Cascade"
+description="Cascade BitTorrent service"
+command="@BINDIR@/cascaded"
+command_args="--quiet"
+command_background=true
+pidfile="/run/${RC_SVCNAME}.pid"
+retry="TERM/30/KILL/5"
+
+depend() {
+    need net
+    after firewall
+}
+
+start_pre() {
+    user="${RC_SVCNAME#*.}"
+    [ "$user" = "$RC_SVCNAME" ] && user="${CASCADE_USER:-}"
+    if [ -z "$user" ]; then
+        eerror "Set CASCADE_USER in /etc/conf.d/${RC_SVCNAME}, or use a cascaded.<user> link"
+        return 1
+    fi
+    command_user="$user"
+    export HOME="$(getent passwd "$user" | cut -d: -f6)"
+}

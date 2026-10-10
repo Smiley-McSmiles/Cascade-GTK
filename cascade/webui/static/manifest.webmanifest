@@ -1,0 +1,15 @@
+{
+  "name": "Cascade",
+  "short_name": "Cascade",
+  "description": "BitTorrent client",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#3584e4",
+  "icons": [
+    {"src": "/static/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}
+  ],
+  "protocol_handlers": [
+    {"protocol": "magnet", "url": "/add?magnet=%s"}
+  ]
+}

@@ -1,0 +1,2 @@
+#!/bin/sh
+exec svlogd -tt /var/log/cascaded 2>/dev/null || exec logger -t cascaded
