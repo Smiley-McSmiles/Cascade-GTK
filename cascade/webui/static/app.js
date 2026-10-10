@@ -625,8 +625,25 @@ function setSelection(on) {
   S.selection = on;
   S.selectBtn.setAttribute("aria-pressed", on ? "true" : "false");
   S.actionBar.classList.toggle("hidden", !on);
-  if (!on) S.selected.clear();
+  if (!on) { S.selected.clear(); S.anchor = null; }
   for (const c of S.cards.values()) { c.check.classList.toggle("hidden", !on); c.check.checked = S.selected.has(c.id); }
+  updateSelLabel();
+}
+// Ctrl+click toggles one card, Shift+click selects the range from the last clicked card
+function selectClick(card, how) {
+  if (!S.selection) setSelection(true);
+  const order = [...S.list.children];
+  const a = S.anchor ? order.indexOf(S.anchor.el) : -1, b = order.indexOf(card.el);
+  if (how === "range" && a >= 0 && b >= 0) {
+    for (const el of order.slice(Math.min(a, b), Math.max(a, b) + 1)) {
+      const c = [...S.cards.values()].find((x) => x.el === el);
+      if (c) { S.selected.add(c.id); c.check.checked = true; }
+    }
+  } else {
+    if (S.selected.has(card.id)) S.selected.delete(card.id); else S.selected.add(card.id);
+    card.check.checked = S.selected.has(card.id);
+    S.anchor = card;
+  }
   updateSelLabel();
 }
 function updateSelLabel() { setText(S.selLabel, S.selected.size ? `${S.selected.size} selected` : "No torrents selected"); }
@@ -685,9 +702,12 @@ class Card {
     this.bar = h("div");
     this.sub = h("div", { class: "sub" });
     this.speed = h("div", { class: "speed" });
-    this.header = h("button", { class: "header", "aria-expanded": "false", onclick: () => {
-      if (S.selection) { this.check.checked = !this.check.checked; this.check.dispatchEvent(new Event("change")); return; }
-      this.setExpanded(!this.expanded); } },
+    this.header = h("button", { class: "header", "aria-expanded": "false",
+      onmousedown: (e) => { if (e.shiftKey) e.preventDefault(); },   // no text selection on Shift+click
+      onclick: (e) => {
+        const ctrl = e.ctrlKey || e.metaKey;
+        if (ctrl || e.shiftKey || S.selection) { selectClick(this, e.shiftKey ? "range" : "toggle"); return; }
+        this.setExpanded(!this.expanded); } },
     this.iconBox, h("div", { class: "mid" }, h("div", { class: "trow" }, this.name, this.chip), h("div", { class: "progress" }, this.bar),
       h("div", { class: "srow" }, this.sub, this.speed)), icon("down", "arrow"));
     this.toggleBtn = h("button", { class: "btn flat circular icon-only toggle", onclick: () => {
@@ -937,7 +957,9 @@ class Details {
       seen.add(t.url);
       let r = this.trackerRows.get(t.url);
       if (!r) {
-        r = row(t.url, "", { suffix: iconBtn("minus", "Remove", () => call("trackers.remove", { id: this.id, urls: [t.url] }, () => this.refresh())) });
+        r = row(t.url, "", { suffix: [
+          iconBtn("refresh", "Reannounce to this tracker now", () => call("trackers.reannounce", { id: this.id, url: t.url }, () => setTimeout(() => this.refresh(), 1500), "Announcing to " + (t.url.split("/")[2] || t.url))),
+          iconBtn("minus", "Remove", () => call("trackers.remove", { id: this.id, urls: [t.url] }, () => this.refresh()))] });
         this.exp.trackers.content.insertBefore(r, this.sourcesRow);
         this.trackerRows.set(t.url, r);
       }

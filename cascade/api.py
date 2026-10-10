@@ -45,6 +45,7 @@ class Api:
             "trackers.add": self.trackers_add,
             "trackers.remove": self.trackers_remove,
             "trackers.edit": self.trackers_edit,
+            "trackers.reannounce": self.trackers_reannounce,
             "peers.add": self.peers_add,
             "settings.schema": self.settings_schema,
             "settings.get": self.settings_get,
@@ -196,6 +197,10 @@ class Api:
 
     def trackers_remove(self, id, urls):
         self.engine.trackers_remove(self.engine.resolve(id), [urls] if isinstance(urls, str) else urls)
+        return True
+
+    def trackers_reannounce(self, id, url):
+        self.engine.tracker_reannounce(self.engine.resolve(id), url)
         return True
 
     def trackers_edit(self, id, old, new):

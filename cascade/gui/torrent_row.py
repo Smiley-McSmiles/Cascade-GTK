@@ -9,7 +9,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gio, GLib, Gtk, Pango  # noqa: E402
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk, Pango  # noqa: E402
 
 from .. import util  # noqa: E402
 from .widgets import PiecesBar, stat_tile  # noqa: E402
@@ -115,6 +115,10 @@ class TorrentRow(Gtk.ListBoxRow):
         self.header.add_css_class("flat")
         self.header.add_css_class("torrent-header")
         self.header.connect("clicked", self._on_header)
+        # Ctrl+click / Shift+click select, like a file manager - no need to turn on selection mode first
+        mod = Gtk.GestureClick(button=1, propagation_phase=Gtk.PropagationPhase.CAPTURE)
+        mod.connect("pressed", self._on_modified_press)
+        self.header.add_controller(mod)
         top.append(self.header)
 
         hb = Gtk.Box(spacing=12)
@@ -195,9 +199,20 @@ class TorrentRow(Gtk.ListBoxRow):
         self.win.torrent_action("torrents.resume" if paused else "torrents.pause", [self.tid])
 
     # ------------------------------------------------------------ expansion
+    def _on_modified_press(self, g, _n, _x, _y):
+        state = g.get_current_event_state()
+        ctrl = bool(state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.META_MASK))
+        shift = bool(state & Gdk.ModifierType.SHIFT_MASK)
+        if ctrl or shift:
+            self._modified_click = True        # the button still emits "clicked" afterwards: skip that one
+            self.win.select_click(self, ctrl, shift)
+
     def _on_header(self, _b):
+        if getattr(self, "_modified_click", False):
+            self._modified_click = False
+            return
         if self.win.selection_mode:
-            self.check.set_active(not self.check.get_active())
+            self.win.select_click(self, True, False)
             return
         self.set_expanded(not self.expanded)
 
@@ -518,6 +533,11 @@ class Details(Gtk.Box):
             self.win.rpc.call("trackers.add", {"id": self.tid, "urls": [url]},
                               lambda _r: (entry.set_text(""), self.refresh()), self.win.toast)
 
+    def _reannounce_tracker(self, url):
+        self.win.rpc.call("trackers.reannounce", {"id": self.tid, "url": url},
+                          lambda _r: (self.win.toast("Announcing to %s" % url.split("/")[2] if "//" in url else url),
+                                      GLib.timeout_add(1500, lambda: (self.refresh(), False)[1])), self.win.toast)
+
     def _remove_tracker(self, url):
         self.win.rpc.call("trackers.remove", {"id": self.tid, "urls": [url]}, lambda _r: self.refresh(),
                           self.win.toast)
@@ -685,6 +705,11 @@ class Details(Gtk.Box):
                 r = Adw.ActionRow(title=GLib.markup_escape_text(t["url"]))
                 r.set_title_lines(1)
                 r.set_subtitle_lines(2)
+                ra = Gtk.Button(icon_name="view-refresh-symbolic", valign=Gtk.Align.CENTER,
+                                tooltip_text="Reannounce to this tracker now")
+                ra.add_css_class("flat")
+                ra.connect("clicked", lambda _b, u=t["url"]: self._reannounce_tracker(u))
+                r.add_suffix(ra)
                 b = Gtk.Button(icon_name="list-remove-symbolic", valign=Gtk.Align.CENTER, tooltip_text="Remove")
                 b.add_css_class("flat")
                 b.connect("clicked", lambda _b, u=t["url"]: self._remove_tracker(u))

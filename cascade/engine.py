@@ -1339,6 +1339,14 @@ class Engine:
             self.meta.get(tid, {}).pop("tracker", None)
         self.save_resume(h)
 
+    def tracker_reannounce(self, tid, url):
+        """Announce to one tracker now (libtorrent addresses it by its index in the list)."""
+        h = self._h(tid)
+        urls = [t["url"] for t in h.trackers()]
+        if url not in urls:
+            raise EngineError("this torrent has no tracker %s" % url)
+        h.force_reannounce(0, urls.index(url))
+
     def trackers_edit(self, tid, old, new):
         h = self._h(tid)
         lst = [{"url": (new if t["url"] == old else t["url"]), "tier": t.get("tier", 0)} for t in h.trackers()]

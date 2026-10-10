@@ -764,6 +764,34 @@ class MainWindow(Adw.ApplicationWindow):
             if not on:
                 r.check.set_active(False)
         self.actionbar.set_revealed(on)
+        if not on:
+            self._anchor = None
+        self.on_selection_changed()
+
+    def visible_rows(self):
+        """Rows in the order they are shown (sorted, filtered)."""
+        out, i = [], 0
+        while True:
+            r = self.listbox.get_row_at_index(i)
+            if r is None:
+                return out
+            if self._visible(r.data):
+                out.append(r)
+            i += 1
+
+    def select_click(self, row, ctrl, shift):
+        """Ctrl+click toggles one torrent, Shift+click selects the range from the last clicked one."""
+        if not self.selection_mode:
+            self.set_selection_mode(True)
+        anchor = getattr(self, "_anchor", None)
+        rows = self.visible_rows()
+        if shift and anchor in rows and row in rows:
+            a, b = sorted((rows.index(anchor), rows.index(row)))
+            for r in rows[a:b + 1]:
+                r.check.set_active(True)
+        else:
+            row.check.set_active(not row.check.get_active())
+            self._anchor = row
         self.on_selection_changed()
 
     def selected_ids(self):

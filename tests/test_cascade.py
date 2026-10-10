@@ -443,6 +443,9 @@ class DaemonTest(unittest.TestCase):
         self.leecher.call("trackers.add", id=tid, urls=["udp://127.0.0.1:10/announce"])
         urls = [x["url"] for x in self.leecher.call("torrents.details", id=tid, sections=["trackers"])["trackers"]]
         self.assertIn("udp://127.0.0.1:10/announce", urls)
+        self.assertTrue(self.leecher.call("trackers.reannounce", id=tid, url="udp://127.0.0.1:10/announce"))
+        with self.assertRaises(ipc.RpcError):
+            self.leecher.call("trackers.reannounce", id=tid, url="udp://not-there:1/announce")
         self.leecher.call("trackers.remove", id=tid, urls=["udp://127.0.0.1:10/announce"])
         with self.assertRaises(ipc.RpcError):
             self.leecher.call("torrents.pause", ids=["doesnotexist"])
