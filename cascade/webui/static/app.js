@@ -1045,10 +1045,12 @@ async function addFiles(files) {
   }
 }
 function addText(text) {
-  for (const line of text.split(/\s+/)) {
-    if (isMagnet(line)) addSource({ magnet: line });
-    else if (isUrl(line)) addSource({ url: line });
-  }
+  const items = (text || "").split(/\s+/).filter((w) => isMagnet(w) || isUrl(w));
+  if (!items.length) { toast("No magnet links or URLs found"); return; }
+  if (items.length === 1) { addSource(isMagnet(items[0]) ? { magnet: items[0] } : { url: items[0] }); return; }
+  // several at once: add them straight away with the default options
+  Promise.allSettled(items.map((it) => api("torrents.add", Object.assign(isMagnet(it) ? { magnet: it } : { url: it }, { options: {} }))))
+    .then((res) => { toast(`Added ${res.filter((r) => r.status === "fulfilled").length} of ${items.length} torrents`); syncSoon(); });
 }
 async function addSource(src) {
   if (S.settings["add.show_dialog"] === false) { call("torrents.add", Object.assign({}, src, { options: {} }), added); return; }
@@ -1056,13 +1058,16 @@ async function addSource(src) {
 }
 function added(r) { toast(r.duplicate ? `“${r.name}” is already in the list (trackers merged)` : `Added “${r.name}”`); }
 function magnetDialog(text = "") {
-  askText("Add Magnet Link", "magnet:?xt=urn:btih:… or https://…/file.torrent", "Add", (t) => addText(t), text,
-    "Paste a magnet link or the web address of a .torrent file");
+  const ta = h("textarea", { class: "text", placeholder: "magnet:?xt=urn:btih:…\nhttps://…/file.torrent", style: "min-height:120px" }, text);
+  alertDialog({ heading: "Add Magnet Links", body: "Paste one or more magnet links or web addresses of .torrent files, one per line",
+    extra: ta, responses: [["cancel", "Cancel"], ["ok", "Add", "suggested"]], onresponse: (r) => { if (r === "ok") addText(ta.value); } });
+  ta.focus();
 }
 async function pasteClipboard() {
   try {
     const t = await navigator.clipboard.readText();
-    if (isMagnet(t) || isUrl(t)) addText(t); else magnetDialog();
+    const found = t.split(/\s+/).filter((w) => isMagnet(w) || isUrl(w));
+    if (found.length) magnetDialog(found.join("\n")); else magnetDialog();
   } catch (e) { magnetDialog(); }
 }
 function addDialog(src, info) {

@@ -929,6 +929,13 @@ def main(argv=None):
             print("Cascade service is running")
             return 0
         try:
+            import libtorrent  # noqa: F401
+        except ImportError:
+            print("cascade: the Python bindings of libtorrent are missing for %s %d.%d. Install them with: %s"
+                  % (sys.executable, sys.version_info[0], sys.version_info[1], util.libtorrent_hint()),
+                  file=sys.stderr)
+            return 1
+        try:
             return daemon.run(foreground=not args.quiet)
         except daemon.AlreadyRunning as e:
             print("cascade: %s" % e, file=sys.stderr)

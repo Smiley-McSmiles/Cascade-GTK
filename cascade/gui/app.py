@@ -242,7 +242,11 @@ class CascadeApp(Adw.Application):
         win.rpc.call("settings.set", {"values": {"ui.default_asked": True}})
 
     def show_preferences(self, page=None):
-        if not (self.win and self.win.connected and self.win.schema):
+        if not self.win:
+            return
+        if not (self.win.connected and self.win.schema):
+            self.win.toast("Preferences need the Cascade service, which is not running: %s"
+                           % (self.win.error_page.get_description() or "still starting"), 8)
             return
         from .prefs import PrefsDialog
         PrefsDialog(self.win, page).present(self.win)

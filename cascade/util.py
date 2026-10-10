@@ -85,6 +85,26 @@ FILTERS = [
 ]
 
 
+def libtorrent_hint():
+    """The command that installs libtorrent's Python bindings on this system."""
+    import shutil
+    for exe, cmd in (("dnf", "sudo dnf install rb_libtorrent-python3"),
+                     ("apt-get", "sudo apt install python3-libtorrent"),
+                     ("pacman", "sudo pacman -S libtorrent-rasterbar"),
+                     ("zypper", "sudo zypper install python3-libtorrent-rasterbar"),
+                     ("xbps-install", "sudo xbps-install -S python3-libtorrent-rasterbar"),
+                     ("apk", "sudo apk add py3-libtorrent-rasterbar"),
+                     ("pkg", "sudo pkg install py311-libtorrent-rasterbar")):
+        if shutil.which(exe):
+            return cmd
+    return "pip install --user libtorrent"
+
+
+def split_sources(text):
+    """Every magnet link / URL in a block of text (one per line, or separated by spaces)."""
+    return [w for w in (text or "").split() if is_magnet(w) or is_url(w)]
+
+
 def is_magnet(s):
     return isinstance(s, str) and s.strip().lower().startswith("magnet:?")
 

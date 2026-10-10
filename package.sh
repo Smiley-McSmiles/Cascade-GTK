@@ -140,7 +140,9 @@ License:        MIT
 URL:            $URL
 Source0:        $SRCNAME.tar.gz
 BuildArch:      noarch
-Requires:       python3 >= 3.9, python3-libtorrent >= 2.0, python3-gobject, gtk4, libadwaita >= 1.5
+Requires:       python3 >= 3.9, python3-gobject, gtk4, libadwaita >= 1.5
+# Fedora calls the bindings rb_libtorrent-python3, openSUSE python3-libtorrent-rasterbar
+Requires:       (rb_libtorrent-python3 or python3-libtorrent-rasterbar or python3-libtorrent)
 Recommends:     libnotify, desktop-file-utils
 
 %description

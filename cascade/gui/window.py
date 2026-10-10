@@ -917,15 +917,57 @@ class MainWindow(Adw.ApplicationWindow):
 
     def add_magnet_dialog(self, text=""):
         if not text:
-            self._clipboard_text(lambda t: self._magnet_dialog(t if t and (util.is_magnet(t) or util.is_url(t))
-                                                               else ""))
+            self._clipboard_text(lambda t: self._magnet_dialog("\n".join(util.split_sources(t))))
         else:
             self._magnet_dialog(text)
 
     def _magnet_dialog(self, text):
-        self.ask_text("Add Magnet Link", "magnet:?xt=urn:btih:… or https://…/file.torrent", "Add",
-                      lambda t: self.add_source_text(t), text,
-                      "Paste a magnet link or the web address of a .torrent file")
+        d = Adw.AlertDialog(heading="Add Magnet Links",
+                            body="Paste one or more magnet links or web addresses of .torrent files, one per line")
+        tv = Gtk.TextView(wrap_mode=Gtk.WrapMode.CHAR, top_margin=8, bottom_margin=8, left_margin=10,
+                          right_margin=10, accepts_tab=False)
+        tv.add_css_class("magnet-text")
+        tv.get_buffer().set_text(text)
+        sw = Gtk.ScrolledWindow(child=tv, min_content_height=110, max_content_height=260,
+                                propagate_natural_height=True, hscrollbar_policy=Gtk.PolicyType.NEVER)
+        frame = Gtk.Frame(child=sw)
+        d.set_extra_child(frame)
+        d.add_response("cancel", "Cancel")
+        d.add_response("ok", "Add")
+        d.set_response_appearance("ok", Adw.ResponseAppearance.SUGGESTED)
+        d.set_default_response("ok")
+        d.set_close_response("cancel")
+
+        def done(_d, r):
+            if r != "ok":
+                return
+            b = tv.get_buffer()
+            self.add_many(b.get_text(b.get_start_iter(), b.get_end_iter(), False))
+
+        d.connect("response", done)
+        d.present(self)
+        tv.grab_focus()
+
+    def add_many(self, text):
+        """One link opens the add sheet; several are added straight away with the default options."""
+        items = util.split_sources(text)
+        if not items:
+            self.toast("No magnet links or URLs found")
+        elif len(items) == 1:
+            self.add_source_text(items[0])
+        else:
+            n = {"ok": 0, "left": len(items)}
+
+            def one(_r=None, failed=False):
+                n["left"] -= 1
+                n["ok"] += 0 if failed else 1
+                if n["left"] == 0:
+                    self.toast("Added %d of %d torrents" % (n["ok"], len(items)))
+                    self.refresh_soon()
+
+            for it in items:
+                src = {"magnet": it} if util.is_magnet(it) else {"url": it}
+                self.rpc.call("torrents.add", dict(src, options={}), one, lambda m: (self.toast(m), one(failed=True)))
 
     def _clipboard_text(self, cb):
         cl = self.get_clipboard()
@@ -940,10 +982,8 @@ class MainWindow(Adw.ApplicationWindow):
 
     def paste(self):
         def got(text):
-            if text and (util.is_magnet(text) or util.is_url(text)):
-                for line in text.split():
-                    if util.is_magnet(line) or util.is_url(line):
-                        self.add_source_text(line)
+            if util.split_sources(text):
+                self.add_many(text)
             else:
                 self.toast("The clipboard has no magnet link or URL")
 
@@ -993,9 +1033,7 @@ class MainWindow(Adw.ApplicationWindow):
                     self.add_source(magnet=f.get_uri())
             return True
         if isinstance(value, str):
-            for line in value.split():
-                if util.is_magnet(line) or util.is_url(line):
-                    self.add_source_text(line)
+            self.add_many(value)
             return True
         return False
 

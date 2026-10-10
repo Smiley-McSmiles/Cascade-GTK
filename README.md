@@ -131,7 +131,7 @@ Dependencies: Python 3.9+, the Python bindings of **libtorrent 2.0** and, for th
 | Package manager | Dependencies |
 |---|---|
 | apt | `python3-libtorrent python3-gi gir1.2-gtk-4.0 gir1.2-adw-1` |
-| dnf | `python3-libtorrent python3-gobject gtk4 libadwaita` |
+| dnf (Fedora) | `rb_libtorrent-python3 python3-gobject gtk4 libadwaita` |
 | pacman | `libtorrent-rasterbar python-gobject gtk4 libadwaita` |
 | xbps | `python3-libtorrent-rasterbar python3-gobject gtk4 libadwaita` |
 | apk | `py3-libtorrent-rasterbar py3-gobject3 gtk4.0 libadwaita` |

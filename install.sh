@@ -97,7 +97,7 @@ pm_name() {
 deps_hint() {
     case "$(pm_name)" in
         apt-get) echo "apt install python3-libtorrent python3-gi gir1.2-gtk-4.0 gir1.2-adw-1" ;;
-        dnf) echo "dnf install python3-libtorrent python3-gobject gtk4 libadwaita" ;;
+        dnf) echo "dnf install rb_libtorrent-python3 python3-gobject gtk4 libadwaita" ;;
         pacman) echo "pacman -S libtorrent-rasterbar python-gobject gtk4 libadwaita" ;;
         xbps-install) echo "xbps-install -S python3-libtorrent-rasterbar python3-gobject gtk4 libadwaita" ;;
         apk) echo "apk add py3-libtorrent-rasterbar py3-gobject3 gtk4.0 libadwaita" ;;
@@ -114,7 +114,7 @@ install_deps() {
         apt-get) apt-get update || warn "apt-get update failed"
                  REQ="python3 python3-libtorrent python3-gi gir1.2-gtk-4.0 gir1.2-adw-1"
                  OPT="desktop-file-utils libgtk-4-bin libnotify-bin" ;;
-        dnf) REQ="python3 python3-libtorrent python3-gobject gtk4 libadwaita"; OPT="desktop-file-utils libnotify" ;;
+        dnf) REQ="python3 rb_libtorrent-python3 python3-gobject gtk4 libadwaita"; OPT="desktop-file-utils libnotify" ;;
         pacman) REQ="python libtorrent-rasterbar python-gobject gtk4 libadwaita"; OPT="desktop-file-utils libnotify" ;;
         xbps-install) REQ="python3 python3-libtorrent-rasterbar python3-gobject gtk4 libadwaita"
                       OPT="desktop-file-utils gtk-update-icon-cache libnotify" ;;
@@ -144,6 +144,37 @@ install_pkgs() {
     esac
 }
 
+libtorrent_pkg() {
+    case "$(pm_name)" in
+        apt-get) echo python3-libtorrent ;;
+        dnf) echo rb_libtorrent-python3 ;;
+        pacman) echo libtorrent-rasterbar ;;
+        xbps-install) echo python3-libtorrent-rasterbar ;;
+        apk) echo py3-libtorrent-rasterbar ;;
+        zypper) echo python3-libtorrent-rasterbar ;;
+        pkg) echo py311-libtorrent-rasterbar ;;
+        pkg_add) echo py3-libtorrent-rasterbar ;;
+        *) return 1 ;;
+    esac
+}
+
+# Cascade cannot start without libtorrent: an interactive install offers to fetch it right away
+offer_libtorrent() {
+    [ -z "$DESTDIR" ] && [ "$(id -u)" -eq 0 ] && [ -t 0 ] && [ -t 1 ] || return 1
+    pkg=$(libtorrent_pkg) || return 1
+    printf '\nThe Python bindings of libtorrent are missing and Cascade cannot run without them.\n'
+    printf 'Install them now with %s (%s)? [Y/n] ' "$(pm_name)" "$pkg"
+    ans=""
+    read -r ans || ans=n
+    case "$ans" in
+        ""|y|Y|yes|Yes|YES) ;;
+        *) return 1 ;;
+    esac
+    [ "$(pm_name)" = apt-get ] && { apt-get update >/dev/null 2>&1 || true; }
+    install_pkgs "$pkg" || return 1
+    PY=$(find_python) && "$PY" -c 'import libtorrent' 2>/dev/null
+}
+
 find_python() {   # the first Python 3.9+ that can import libtorrent (falls back to any Python 3.9+)
     first=""
     for c in python3 python3.13 python3.12 python3.11 python3.10 python3.9 python; do
@@ -164,6 +195,8 @@ preflight() {
             2.*) say "libtorrent: $LTV" ;;
             *) warn "libtorrent $LTV is old: Cascade needs libtorrent 2.0 or newer" ;;
         esac
+    elif [ "$CHECK" -eq 0 ] && offer_libtorrent; then
+        say "libtorrent: $("$PY" -c 'import libtorrent; print(libtorrent.__version__)')"
     else
         warn "the Python bindings of libtorrent are missing - Cascade cannot run without them. Install with: $(deps_hint)   (or rerun with --install-deps, or: pip install libtorrent)"
     fi
