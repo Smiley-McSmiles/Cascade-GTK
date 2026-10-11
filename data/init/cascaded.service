@@ -1,0 +1,18 @@
+# systemd user unit: run Cascade in the background for your account (headless or at login)
+#   systemctl --user enable --now cascaded
+# Without a desktop session, also run once:  sudo loginctl enable-linger $USER
+[Unit]
+Description=Cascade BitTorrent service
+Documentation=man:cascade(1)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=@BINDIR@/cascaded --quiet
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target

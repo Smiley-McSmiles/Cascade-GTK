@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#62a0ea"/>
+      <stop offset="1" stop-color="#1c71d8"/>
+    </linearGradient>
+    <linearGradient id="side" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a5fb4"/>
+      <stop offset="1" stop-color="#174b8f"/>
+    </linearGradient>
+    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="chev" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#deeefc"/>
+    </linearGradient>
+  </defs>
+  <!-- tile with the GNOME-style thickness at the bottom -->
+  <rect x="12" y="16" width="104" height="104" rx="22" fill="url(#side)"/>
+  <rect x="12" y="10" width="104" height="104" rx="22" fill="url(#face)"/>
+  <path d="M34 10h60a22 22 0 0 1 22 22v8C98 30 78 26 64 26S30 30 12 40v-8a22 22 0 0 1 22-22z" fill="url(#water)"/>
+  <!-- the cascade: three falling chevrons -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="11">
+    <path d="M42 30l22 17 22-17" stroke="#ffffff" stroke-opacity="0.38"/>
+    <path d="M42 52l22 17 22-17" stroke="#ffffff" stroke-opacity="0.68"/>
+    <path d="M42 74l22 17 22-17" stroke="url(#chev)"/>
+  </g>
+  <!-- splash -->
+  <rect x="36" y="100" width="56" height="6" rx="3" fill="#ffffff" fill-opacity="0.5"/>
+</svg>

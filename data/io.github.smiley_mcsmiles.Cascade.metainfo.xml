@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.smiley_mcsmiles.Cascade</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Cascade</name>
+  <summary>Download and share files with BitTorrent</summary>
+  <developer id="io.github.smiley_mcsmiles">
+    <name>Smiley-McSmiles</name>
+  </developer>
+  <description>
+    <p>
+      Cascade is a BitTorrent client for GNOME with the features of a power-user client. Click any torrent to roll
+      open its transfer details, files, peers, trackers, pieces and options - no extra windows. The same torrents
+      and settings are available from the command line and from a web interface that looks just like the app.
+    </p>
+    <ul>
+      <li>Magnet links from your browser, .torrent files, URLs, drag and drop and a watch folder</li>
+      <li>Bind to a network interface such as a VPN tunnel, with a kill switch that pauses everything when it drops</li>
+      <li>Fixed, random, VPN port forwarding (NAT-PMP) or file-based listening ports</li>
+      <li>A weekly schedule for full speed, slow mode and pauses</li>
+      <li>Queueing, seeding limits, labels, IP blocklists, proxies and encryption</li>
+      <li>A one-click web interface and a complete command line</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">io.github.smiley_mcsmiles.Cascade.desktop</launchable>
+  <url type="homepage">https://github.com/Smiley-McSmiles/Cascade-GTK</url>
+  <url type="bugtracker">https://github.com/Smiley-McSmiles/Cascade-GTK/issues</url>
+  <provides>
+    <binary>cascade</binary>
+    <binary>cascade-gtk</binary>
+    <binary>cascaded</binary>
+    <mediatype>application/x-bittorrent</mediatype>
+    <mediatype>x-scheme-handler/magnet</mediatype>
+  </provides>
+  <categories>
+    <category>Network</category>
+    <category>FileTransfer</category>
+    <category>P2P</category>
+  </categories>
+  <keywords>
+    <keyword>torrent</keyword>
+    <keyword>bittorrent</keyword>
+    <keyword>magnet</keyword>
+  </keywords>
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </supports>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="1.0.0" date="2026-10-10">
+      <description>
+        <ul>
+          <li>First release: GTK4/libadwaita app with expanding torrent cards and a roll-down filter bar</li>
+          <li>Web interface that mirrors the app, turned on with one click</li>
+          <li>Command line with every feature, also usable against a remote web interface</li>
+          <li>Network interface binding with a kill switch, port modes including VPN NAT-PMP forwarding</li>
+          <li>Weekly speed schedule, queueing, seeding limits, labels, blocklists, proxies, torrent creation</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+</component>

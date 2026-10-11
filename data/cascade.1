@@ -1,0 +1,143 @@
+.TH CASCADE 1 "October 2026" "cascade 1.0.0" "User Commands"
+.SH NAME
+cascade, cascade-gtk, cascaded \- BitTorrent client with a GTK app, a command line and a web interface
+.SH SYNOPSIS
+.B cascade
+[\fB\-\-json\fR] [\fB\-\-url\fR \fIURL\fR [\fB\-\-password\fR \fIPW\fR]] \fICOMMAND\fR [\fIARGS\fR...]
+.br
+.B cascade-gtk
+[\fITORRENT\fR...]
+.br
+.B cascaded
+[\fB\-\-quiet\fR]
+.SH DESCRIPTION
+Cascade is a BitTorrent client built on libtorrent.  One background service,
+.BR cascaded ,
+owns all torrents and settings.  The GTK app
+.RB ( cascade-gtk ),
+the command line
+.RB ( cascade )
+and the optional web interface are clients of that service, so all three always show the same torrents and the
+same settings.  The GTK app starts the service when needed; it keeps running after the window closes unless
+"Keep running in the background" is turned off.
+.PP
+Torrents are named by their number in
+.BR "cascade list" ,
+a unique prefix (4 or more characters) of their info hash, or a unique part of their name.
+Most commands accept several torrents, or
+.BR all .
+.SH COMMANDS
+.TP
+.BR list ", " ls " [\fB\-f\fR \fIFILTER\fR] [\fB\-l\fR \fILABEL\fR] [\fB\-s\fR \fISORT\fR] [\fISEARCH\fR]"
+List torrents.  Filters: all, downloading, seeding, completed, paused, queued, active, checking, error.
+.TP
+.BR watch ", " top
+A live view of the list (Ctrl+C quits).
+.TP
+.B status
+Speeds, listening port, bound interface, slow mode, schedule and web interface.
+.TP
+.BI add " SOURCE..." " \fR[\fB\-p\fR \fIDIR\fR] [\fB\-l\fR \fILABEL\fR] [\fB\-\-paused\fR] [\fB\-\-sequential\fR] [\fB\-\-first\-last\fR] [\fB\-\-skip\-check\fR] [\fB\-\-top\fR]"
+Add magnet links, .torrent files or URLs of .torrent files.
+.TP
+.BI info " T" ", files " T " [\-\-set N=PRIO...], peers " T " [\-\-add IP:PORT], trackers " T " [\-\-add URL] [\-\-remove URL]"
+Details of one torrent.  File priorities are skip, low, normal or high (0\-7); ranges such as 1\-5=high work.
+.TP
+.BI pause ", " resume ", " start ", " recheck ", " reannounce " T..."
+Pause, resume, force-start (skip the queue), verify the data, or ask the trackers for peers now.
+.TP
+.BI remove " T... " "\fR[\fB\-\-data\fR] [\fB\-y\fR]"
+Remove torrents, optionally with their downloaded files.
+.TP
+.BI move " T... DIR" ", queue " "T... up|down|top|bottom"
+Move the data, or move torrents in the queue.
+.TP
+.BI limit " T... " "\fR[\fB\-\-down\fR \fIKIB\fR] [\fB\-\-up\fR \fIKIB\fR] [\fB\-\-connections\fR \fIN\fR] [\fB\-\-slots\fR \fIN\fR]"
+Per-torrent limits (0 = default).
+.TP
+.BI option " T... " "\-\-set KEY=VALUE..."
+Per-torrent options: sequential, first_last, super_seeding, auto_managed, ratio_limit, seed_time_limit, label.
+.TP
+.BI label " T... " "\-\-to LABEL" ", labels " "[\-\-add NAME [\-\-path DIR]] [\-\-remove NAME]"
+Set labels, list them, or create a label with its own download folder.
+.TP
+.BI magnet " T" ", export " "T [\-o FILE]"
+Print the magnet link, or save the .torrent file.
+.TP
+.BR slow " [on|off|toggle]"
+Slow mode: the alternative speed limits.  A manual change lasts until the schedule next changes.
+.TP
+.BR schedule " [show | on | off | clear | set \fIDAYS HOURS MODE\fR]"
+The weekly schedule.  DAYS: mon\-fri, weekend, sat,sun, all.  HOURS: 9\-17, 22\-6, all.  MODE: normal, slow, pause.
+.TP
+.BR config " [\fIPAGE\fR|\fIKEY\fR], " get " \fIKEY\fR..., " set " \fIKEY VALUE\fR..., " reset
+Show and change settings.  Every setting of the preferences window has a key (see
+.BR "cascade config" ).
+.TP
+.BR port " [random]"
+Show the listening port, or pick a new random one.
+.TP
+.B interfaces
+Network interfaces to bind to (net.interface), with their addresses.
+.TP
+.BR webui " [status | on | off | password [\fIPW\fR] | open]"
+The web interface.  Turning it on without a password creates one and prints it.
+.TP
+.BI create " PATH " "\fR[\fB\-o\fR \fIFILE\fR] [\fB\-t\fR \fITRACKER\fR]... [\fB\-\-private\fR] [\fB\-\-v1\fR|\fB\-\-v2\fR] [\fB\-\-seed\fR]"
+Create a .torrent file (hybrid v1+v2 by default).
+.TP
+.BR boot " [status | enable | disable] [\fB\-\-user\fR \fINAME\fR]"
+Start the service when the computer starts, before anyone logs in: a systemd user unit with lingering (no root
+needed), or, as root (it uses sudo or doas by itself), a runit service, an OpenRC service, or a FreeBSD or OpenBSD
+rc.d script that runs as the user.
+.TP
+.BR blocklist ", " log " [\-n N], " daemon " [\-\-detach], " stop ", " gui
+Reload the IP blocklist, show the service log, run or stop the service, open the GTK app.
+.SH NETWORK
+.TP
+.B Interface binding and kill switch
+.B cascade set net.interface tun0
+sends all traffic through one device.  With net.killswitch on (the default) every transfer pauses while the
+device is down or has no address, so nothing goes over the normal connection.
+.TP
+.B Port modes
+net.port_mode is fixed, random (a new port at every start, between net.random_min and net.random_max),
+natpmp (VPN port forwarding: the port is requested from net.natpmp_gateway every 45 seconds, e.g. 10.2.0.1 for
+ProtonVPN) or file (read from net.port_file, e.g. gluetun's /tmp/gluetun/forwarded_port).
+.SH ENVIRONMENT
+.TP
+.B CASCADE_URL, CASCADE_PASSWORD
+Use a remote Cascade web interface instead of the local service.
+.TP
+.B CASCADE_HOME
+Keep configuration, data, logs and the socket under one directory.
+.TP
+.B CASCADE_CONFIG_DIR, CASCADE_DATA_DIR, CASCADE_STATE_DIR, CASCADE_RUN_DIR, CASCADE_SOCKET
+Override single locations.
+.SH FILES
+.TP
+.I ~/.config/cascade/settings.json
+Settings (written by the service only).
+.TP
+.I ~/.local/share/cascade/
+Torrents (resume data), labels and statistics.
+.TP
+.I ~/.local/state/cascade/cascade.log
+The log.
+.TP
+.I $XDG_RUNTIME_DIR/cascade/cascade.sock
+The control socket (only your user can open it).
+.SH EXAMPLES
+.nf
+cascade add 'magnet:?xt=urn:btih:...' -l linux
+cascade list -f downloading
+cascade files 2 --set 3=skip 1=high
+cascade set net.interface wg0
+cascade set net.port_mode natpmp
+cascade schedule set mon-fri 9-17 slow
+cascade webui on
+CASCADE_URL=http://nas:8150 cascade status
+.fi
+.SH SEE ALSO
+.UR https://github.com/Smiley-McSmiles/Cascade-GTK
+.UE
