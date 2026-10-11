@@ -58,6 +58,7 @@
         <ul>
           <li>Start when the computer starts now works for a headless system service under its own account</li>
           <li>The setting shows whether the system service is really enabled, and names the command to change it</li>
+          <li>Values in a torrent's Information list no longer wrap into a narrow column</li>
         </ul>
       </description>
     </release>

@@ -211,7 +211,7 @@ select.select option { background: var(--popover-bg); color: var(--window-fg); }
 .row.property .rtitle { font-size: 0.82em; color: var(--dim); }
 .row.property .rsub { font-size: 1em; color: var(--window-fg); }
 .row .suffix { display: flex; gap: 6px; align-items: center; flex: 0 1 auto; max-width: 65%; min-width: 0; }
-.row .value { color: var(--dim); text-align: right; overflow-wrap: anywhere; max-width: 60%; font-variant-numeric: tabular-nums; user-select: text; }
+.row .value { color: var(--dim); text-align: right; overflow-wrap: anywhere; min-width: 0; font-variant-numeric: tabular-nums; user-select: text; }
 .row.error .rsub { color: var(--error); }
 .row.disabled { opacity: 0.5; pointer-events: none; }
 .expander > .row .arrow { transition: transform 200ms; }
