@@ -11,6 +11,7 @@ import getpass
 import json
 import os
 import shutil
+import subprocess
 import sys
 import time
 
@@ -684,6 +685,37 @@ class Cli:
         lines = self.call("log.tail", lines=self.args.lines)
         self.out(lines, "\n".join(lines))
 
+    def cmd_boot(self):
+        """Start the service when the computer starts, before login (any init system)."""
+        import pwd
+        from . import bootsvc
+        a = self.args
+        user = (a.user or os.environ.get("SUDO_USER") or os.environ.get("DOAS_USER")
+                or pwd.getpwuid(os.getuid()).pw_name)
+        init = bootsvc.detect()
+        if a.action == "status":
+            on = bootsvc.status_system(user, init) if init != "systemd" or os.getuid() == 0 else \
+                bootsvc._run("systemctl", "--user", "is-enabled", "cascaded.service")[1] == "enabled"
+            text = "Starting at boot is %s for %s (%s)" % ("on" if on else "off", user, init or "unknown init")
+            return self.out({"init": init, "user": user, "enabled": on}, text)
+        enable = a.action == "enable"
+        try:
+            if os.getuid() == 0:
+                if user == "root":
+                    raise CliError("name the user who owns the torrents: cascade boot %s --user NAME" % a.action)
+                (bootsvc.enable_system if enable else bootsvc.disable_system)(user, init)
+            elif init == "systemd":
+                from .settings import State
+                (bootsvc.enable_user_systemd if enable else bootsvc.disable_user_systemd)(State())
+            else:
+                su = shutil.which("sudo") or shutil.which("doas")
+                if not su:
+                    raise CliError("run this as root (no sudo or doas found)")
+                return subprocess.call([su] + bootsvc.cascade_command() + ["boot", a.action, "--user", user])
+        except bootsvc.BootError as e:
+            raise CliError(str(e))
+        self.out(True, "Cascade %s at boot for %s (%s)" % ("starts" if enable else "no longer starts", user, init))
+
     def cmd_stop(self):
         try:
             from . import ipc as _ipc
@@ -793,6 +825,9 @@ def build_parser():
     sp.add_argument("--detach", action="store_true", help="start it in the background and return")
     sp.add_argument("--quiet", action="store_true", help="log only to the log file")
     add("stop", "stop the Cascade service")
+    sp = add("boot", "start the service when the computer starts (systemd, runit, OpenRC, FreeBSD, OpenBSD)")
+    sp.add_argument("action", nargs="?", default="status", choices=["status", "enable", "disable"])
+    sp.add_argument("--user", help="whose torrents (default: you, or the user who ran sudo)")
     add("status", "speeds, port, interface, slow mode and web interface")
 
     def listing(sp):
@@ -939,7 +974,7 @@ def main(argv=None):
             return daemon.run(foreground=not args.quiet)
         except daemon.AlreadyRunning as e:
             print("cascade: %s" % e, file=sys.stderr)
-            return 1
+            return 0 if args.quiet else 1
     cli = Cli(args)
     try:
         rc = getattr(cli, "cmd_" + cmd)()

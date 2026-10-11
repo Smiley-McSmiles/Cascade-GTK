@@ -74,7 +74,10 @@ PAGES = [
         group("Behavior", [
             S("app.background", "bool", True, "Keep running in the background",
               "Transfers continue after the window is closed, and the web interface and command line stay available"),
-            S("app.autostart", "bool", False, "Start on login", "Start the Cascade service when you log in"),
+            S("app.start_at_boot", "bool", False, "Start when the computer starts",
+              "Before anyone logs in, so torrents and the web interface come back after a reboot (needs systemd)"),
+            S("app.autostart", "bool", False, "Start on login", "Start the Cascade service when you log in",
+              depends=dep("app.start_at_boot", **{"in": [False]})),
             S("app.confirm_remove", "bool", True, "Ask before removing torrents"),
             S("notify.finished", "bool", True, "Notify when a download finishes"),
             A("default.handler", "Open magnet links with Cascade",

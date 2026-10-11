@@ -49,7 +49,8 @@ def launcher_command():
         if p:
             return shlex.quote(p)
     pkg_parent = os.path.dirname(paths.package_dir())
-    return "env PYTHONPATH=%s %s -m cascade daemon" % (shlex.quote(pkg_parent), shlex.quote(sys.executable))
+    return "%s PYTHONPATH=%s %s -m cascade daemon" % (shutil.which("env") or "/usr/bin/env", shlex.quote(pkg_parent),
+                                                     shlex.quote(sys.executable))
 
 
 def write_autostart(enabled):
@@ -113,6 +114,23 @@ def run(foreground=True):
     def on_change(keys):
         if "log.level" in keys:
             logging.getLogger().setLevel(LEVELS.get(settings["log.level"], logging.INFO))
+        if "app.start_at_boot" in keys:
+            on = settings["app.start_at_boot"]
+
+            def work():
+                from . import bootsvc
+                try:
+                    init = bootsvc.apply(on, state)
+                except bootsvc.BootError as e:
+                    engine.event("error", "autostart", "Cannot change starting at boot: %s" % e)
+                    settings.update({"app.start_at_boot": not on}, notify=False)
+                    return
+                engine.event("info", "autostart", "Cascade %s when the computer starts (%s)"
+                             % ("now starts" if on else "no longer starts", init))
+                if on and settings["app.autostart"]:
+                    settings.update({"app.autostart": False})      # one way of starting is enough
+
+            threading.Thread(target=work, name="boot", daemon=True).start()
         if "app.autostart" in keys:
             try:
                 write_autostart(settings["app.autostart"])

@@ -86,6 +86,11 @@ The web interface.  Turning it on without a password creates one and prints it.
 .BI create " PATH " "\fR[\fB\-o\fR \fIFILE\fR] [\fB\-t\fR \fITRACKER\fR]... [\fB\-\-private\fR] [\fB\-\-v1\fR|\fB\-\-v2\fR] [\fB\-\-seed\fR]"
 Create a .torrent file (hybrid v1+v2 by default).
 .TP
+.BR boot " [status | enable | disable] [\fB\-\-user\fR \fINAME\fR]"
+Start the service when the computer starts, before anyone logs in: a systemd user unit with lingering (no root
+needed), or, as root (it uses sudo or doas by itself), a runit service, an OpenRC service, or a FreeBSD or OpenBSD
+rc.d script that runs as the user.
+.TP
 .BR blocklist ", " log " [\-n N], " daemon " [\-\-detach], " stop ", " gui
 Reload the IP blocklist, show the service log, run or stop the service, open the GTK app.
 .SH NETWORK

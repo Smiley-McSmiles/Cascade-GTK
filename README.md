@@ -188,6 +188,22 @@ Torrents are named by their number in `cascade list`, a unique id prefix, or a u
 
 ## Running headless (servers, NAS, seedboxes)
 
+Preferences → General → **Start when the computer starts** (or `cascade boot enable`) makes Cascade run at boot,
+before anyone logs in, on every supported init system:
+
+| Init system | What it sets up | Root? |
+|---|---|---|
+| systemd | a user unit + `loginctl enable-linger` for your account | no |
+| runit (Void, Artix) | `/etc/sv/cascaded-USER`, linked into `/var/service` | yes |
+| OpenRC (Alpine, Gentoo, Artix) | `/etc/init.d/cascaded.USER` in the default runlevel | yes |
+| FreeBSD | `/usr/local/etc/rc.d/cascaded` + `cascaded_enable`/`cascaded_user` in rc.conf | yes |
+| OpenBSD | `/etc/rc.d/cascaded` enabled with `rcctl`, running as you | yes |
+
+The service always runs as you. Where root is needed the app asks for your password (polkit), and the command line
+uses sudo or doas. `cascade boot status` shows what is set up; `cascade boot disable` undoes it.
+
+By hand:
+
 ```sh
 systemctl --user enable --now cascaded           # run in the background for your account
 sudo loginctl enable-linger $USER                # ... even when you are not logged in

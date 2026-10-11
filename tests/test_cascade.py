@@ -264,6 +264,27 @@ class NatPmpTest(unittest.TestCase):
             natpmp._request("127.0.0.1", b"\0\0", 0, tries=1, first_timeout=0.1)
 
 
+class BootServiceTest(unittest.TestCase):
+    def test_templates_render_and_parse(self):
+        from cascade import bootsvc
+        cmd = bootsvc.daemon_command()
+        self.assertIn("--quiet", cmd)
+        d = tempfile.mkdtemp()
+        try:
+            for name, text in (("openrc", bootsvc.OPENRC.format(user="alice", home="/home/alice",
+                                                                 cmd_sh=bootsvc._sh(cmd))),
+                               ("freebsd", bootsvc.FREEBSD.format(cmd_sh=bootsvc._sh(cmd))),
+                               ("openbsd", bootsvc.OPENBSD.format(cmd_sh=bootsvc._sh(cmd))),
+                               ("runit", bootsvc.RUNIT_RUN.format(user="alice", home="/home/alice", cmd=cmd))):
+                p = os.path.join(d, name)
+                with open(p, "w") as fh:
+                    fh.write(text)
+                self.assertEqual(subprocess.run(["sh", "-n", p]).returncode, 0, name)
+            self.assertIn("User=%i", bootsvc.SYSTEMD_USER_UNIT.replace("Type=simple", "Type=simple\nUser=%i"))
+        finally:
+            shutil.rmtree(d)
+
+
 class CliParserTest(unittest.TestCase):
     def test_parser_and_schedule_specs(self):
         from cascade import cli
