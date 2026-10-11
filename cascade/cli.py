@@ -694,9 +694,10 @@ class Cli:
                 or pwd.getpwuid(os.getuid()).pw_name)
         init = bootsvc.detect()
         if a.action == "status":
-            on = bootsvc.status_system(user, init) if init != "systemd" or os.getuid() == 0 else \
-                bootsvc._run("systemctl", "--user", "is-enabled", "cascaded.service")[1] == "enabled"
-            text = "Starting at boot is %s for %s (%s)" % ("on" if on else "off", user, init or "unknown init")
+            mine = user == pwd.getpwuid(os.getuid()).pw_name
+            on = bootsvc.status() if mine else bootsvc.status_system(user, init)
+            text = "Starting at boot is %s for %s (%s)" % ("unknown" if on is None else "on" if on else "off", user,
+                                                           init or "unknown init")
             return self.out({"init": init, "user": user, "enabled": on}, text)
         enable = a.action == "enable"
         try:
@@ -704,7 +705,7 @@ class Cli:
                 if user == "root":
                     raise CliError("name the user who owns the torrents: cascade boot %s --user NAME" % a.action)
                 (bootsvc.enable_system if enable else bootsvc.disable_system)(user, init)
-            elif init == "systemd":
+            elif init == "systemd" and bootsvc._user_bus() and bootsvc.running_unit() is None:
                 from .settings import State
                 (bootsvc.enable_user_systemd if enable else bootsvc.disable_user_systemd)(State())
             else:

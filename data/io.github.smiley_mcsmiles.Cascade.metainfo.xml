@@ -53,6 +53,14 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.0.1" date="2026-10-11">
+      <description>
+        <ul>
+          <li>Start when the computer starts now works for a headless system service under its own account</li>
+          <li>The setting shows whether the system service is really enabled, and names the command to change it</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.0" date="2026-10-10">
       <description>
         <ul>

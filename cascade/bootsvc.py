@@ -272,15 +272,59 @@ def status_system(user, init=None):
 
 
 # ---------------------------------------------------------------- systemd without root
+def running_unit():
+    """(scope, unit) of the systemd service we run in, e.g. ("system", "cascaded@cascade.service"), or None."""
+    try:
+        with open("/proc/self/cgroup") as fh:
+            lines = fh.read().splitlines()
+    except OSError:
+        return None
+    for line in lines:
+        path = line.split(":", 2)[-1]
+        parts = [p for p in path.split("/") if p]
+        units = [p for p in parts if p.endswith(".service")]
+        if not units or units[-1].startswith("user@"):
+            continue
+        return ("user" if any(p.startswith("user@") for p in parts) else "system"), units[-1]
+    return None
+
+
+def _user_env():
+    """Environment that reaches our own user manager even from a service without a login session."""
+    env = dict(os.environ)
+    run = env.get("XDG_RUNTIME_DIR") or "/run/user/%d" % os.getuid()
+    env["XDG_RUNTIME_DIR"] = run
+    if not env.get("DBUS_SESSION_BUS_ADDRESS") and os.path.exists(os.path.join(run, "bus")):
+        env["DBUS_SESSION_BUS_ADDRESS"] = "unix:path=" + os.path.join(run, "bus")
+    return env
+
+
+def _user_bus():
+    return os.path.exists(os.path.join(_user_env()["XDG_RUNTIME_DIR"], "systemd", "private")) or \
+        os.path.exists(os.path.join(_user_env()["XDG_RUNTIME_DIR"], "bus"))
+
+
+def _systemctl_user(*args, must=False):
+    cmd = ("systemctl", "--user") + args
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=30, env=_user_env())
+        rc, out = r.returncode, (r.stderr or r.stdout).strip()
+    except (OSError, subprocess.SubprocessError) as e:
+        rc, out = 1, str(e)
+    if rc and must:
+        raise BootError("%s failed: %s" % (" ".join(cmd), out or "exit %d" % rc))
+    return rc, out
+
+
 def enable_user_systemd(state):
     user = pwd.getpwuid(os.getuid()).pw_name
-    if _run("systemctl", "--user", "cat", "cascaded.service")[0]:
+    if _systemctl_user("cat", "cascaded.service")[0]:
         # source checkout or a user install without the packaged unit: write our own
         unit = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"),
                             "systemd", "user", "cascaded.service")
         _write(unit, SYSTEMD_USER_UNIT.format(cmd=daemon_command()), 0o644)
-        _run("systemctl", "--user", "daemon-reload")
-    _must("systemctl", "--user", "enable", "cascaded.service")
+        _systemctl_user("daemon-reload")
+    _systemctl_user("enable", "cascaded.service", must=True)
     if _run("loginctl", "show-user", user, "-p", "Linger")[1] != "Linger=yes":
         _must("loginctl", "enable-linger", user)
         state.set("linger_by_cascade", True)
@@ -288,32 +332,69 @@ def enable_user_systemd(state):
 
 def disable_user_systemd(state):
     user = pwd.getpwuid(os.getuid()).pw_name
-    _run("systemctl", "--user", "disable", "cascaded.service")
+    _systemctl_user("disable", "cascaded.service")
     if state.get("linger_by_cascade"):
         _run("loginctl", "disable-linger", user)     # only undo what we turned on ourselves
         state.set("linger_by_cascade", False)
 
 
 # ---------------------------------------------------------------- what the service itself calls
+def status(state=None):
+    """Does Cascade start at boot right now?  True/False, or None when that cannot be told."""
+    init = detect()
+    if init == "systemd":
+        unit = running_unit()
+        if unit and unit[0] == "system":
+            return _run("systemctl", "is-enabled", unit[1])[1] == "enabled"
+        user = pwd.getpwuid(os.getuid()).pw_name
+        if status_system(user, init):
+            return True
+        if not _user_bus():
+            return None
+        linger = _run("loginctl", "show-user", user, "-p", "Linger")[1] == "Linger=yes"
+        return linger and _systemctl_user("is-enabled", "cascaded.service")[1] == "enabled"
+    if init is None:
+        return None
+    return status_system(pwd.getpwuid(os.getuid()).pw_name, init)
+
+
+def _needs_root(init, action, user, why=""):
+    return BootError("%sthis needs root on %s: run  sudo cascade boot %s --user %s"
+                     % (why + "; " if why else "", init, action, user))
+
+
 def apply(enabled, state):
     """Called by the service (running as the user) when the setting changes.  Raises BootError."""
     init = detect()
-    if init == "systemd":
-        (enable_user_systemd if enabled else disable_user_systemd)(state)
-        return init
     if init is None:
         raise BootError("no supported init system found (systemd, runit, OpenRC, FreeBSD or OpenBSD rc)")
     user = pwd.getpwuid(os.getuid()).pw_name
     action = "enable" if enabled else "disable"
+    if status(state) is enabled:
+        return init                              # already the way it should be (e.g. a headless system service)
     if os.getuid() == 0:
         (enable_system if enabled else disable_system)(user, init)
         return init
+    if init == "systemd":
+        unit = running_unit()
+        if unit and unit[0] == "system":
+            # we run as a system service (cascaded@USER.service or the admin's own unit): that unit decides,
+            # and changing it needs root unless polkit allows it without asking
+            rc, out = _run("systemctl", "--no-ask-password", action, unit[1])
+            if rc:
+                raise BootError("Cascade runs as the system service %s; to change this run  sudo systemctl %s %s"
+                                % (unit[1], action, unit[1]))
+            return init
+        if _user_bus():
+            (enable_user_systemd if enabled else disable_user_systemd)(state)
+            return init
+        # no user manager for this account (a system account without a login): use the system template
     pk = shutil.which("pkexec")
-    if not pk:
-        raise BootError("this needs root on %s: run  sudo cascade boot %s --user %s" % (init, action, user))
+    if not pk or not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+        raise _needs_root(init, action, user)    # pkexec needs a desktop to ask for the password
     # pkexec shows the desktop's password prompt; it can take a while for the user to answer
     rc, out = _run(pk, *cascade_command(), "boot", action, "--user", user, timeout=300)
     if rc:
         why = "the password prompt was dismissed" if rc in (126, 127) else (out or "exit %d" % rc)
-        raise BootError("%s (or run  sudo cascade boot %s --user %s)" % (why, action, user))
+        raise _needs_root(init, action, user, why)
     return init
