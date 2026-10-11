@@ -284,6 +284,34 @@ class BootServiceTest(unittest.TestCase):
         finally:
             shutil.rmtree(d)
 
+    def test_headless_system_service(self):
+        from unittest import mock
+        from cascade import bootsvc
+        for cg, want in (("0::/system.slice/system-cascaded.slice/cascaded@cascade.service\n",
+                          ("system", "cascaded@cascade.service")),
+                         ("0::/user.slice/user-1000.slice/user@1000.service/app.slice/cascaded.service\n",
+                          ("user", "cascaded.service")),
+                         ("0::/user.slice/user-1000.slice/session-2.scope\n", None)):
+            with mock.patch("builtins.open", mock.mock_open(read_data=cg)):
+                self.assertEqual(bootsvc.running_unit(), want)
+        unit = {"state": "enabled"}
+        calls = []
+
+        def fake_run(*cmd, timeout=30):
+            calls.append(cmd)
+            return (0, unit["state"]) if cmd[:2] == ("systemctl", "is-enabled") else (1, "access denied")
+
+        with mock.patch.object(bootsvc, "detect", return_value="systemd"), \
+                mock.patch.object(bootsvc, "running_unit", return_value=("system", "cascaded@cascade.service")), \
+                mock.patch.object(bootsvc, "_run", fake_run):
+            self.assertEqual(bootsvc.status(), True)
+            self.assertEqual(bootsvc.apply(True, None), "systemd")       # already enabled by the admin: nothing to do
+            self.assertFalse([c for c in calls if "--user" in c])        # never the user bus a service lacks
+            unit["state"] = "disabled"
+            if os.getuid():
+                with self.assertRaisesRegex(bootsvc.BootError, "sudo systemctl enable cascaded@cascade.service"):
+                    bootsvc.apply(True, None)
+
 
 class CliParserTest(unittest.TestCase):
     def test_parser_and_schedule_specs(self):

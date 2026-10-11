@@ -202,6 +202,10 @@ before anyone logs in, on every supported init system:
 The service always runs as you. Where root is needed the app asks for your password (polkit), and the command line
 uses sudo or doas. `cascade boot status` shows what is set up; `cascade boot disable` undoes it.
 
+When Cascade already runs as a system service under its own account (for example `cascaded@cascade.service`), the
+switch shows whether that unit is enabled. It is changed with `sudo systemctl enable|disable cascaded@cascade`, and
+the error message names the exact command, because an unprivileged service cannot change system units.
+
 By hand:
 
 ```sh

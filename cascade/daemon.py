@@ -142,6 +142,19 @@ def run(foreground=True):
     server.serve_in_thread()
     webui.apply()
 
+    def sync_boot():
+        # show the truth: a headless cascaded@USER.service that the admin enabled does start at boot
+        from . import bootsvc
+        try:
+            on = bootsvc.status(state)
+        except Exception:
+            log.exception("could not tell whether Cascade starts at boot")
+            return
+        if on is not None and on != settings["app.start_at_boot"]:
+            settings.update({"app.start_at_boot": on}, notify=False)
+
+    threading.Thread(target=sync_boot, name="boot-status", daemon=True).start()
+
     def handle(signum, _frame):
         log.info("signal %d received", signum)
         stop.set()
