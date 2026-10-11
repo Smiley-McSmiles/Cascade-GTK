@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Smiley-McSmiles/Cascade-GTK/releases"><img src="https://img.shields.io/badge/version-1.0.0-blue.svg?style=flat-square" alt="Version 1.0.0"></a>
+  <a href="https://github.com/Smiley-McSmiles/Cascade-GTK/releases"><img src="https://img.shields.io/badge/version-1.0.1-blue.svg?style=flat-square" alt="Version 1.0.1"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg?style=flat-square" alt="MIT License"></a>
   <a href="https://python.org"><img src="https://img.shields.io/badge/python-3.9%2B-blue.svg?style=flat-square" alt="Python 3.9+"></a>
   <a href="https://gtk.org"><img src="https://img.shields.io/badge/toolkit-GTK4%20%7C%20Libadwaita-red.svg?style=flat-square" alt="GTK4 Libadwaita"></a>
@@ -110,11 +110,11 @@ them yourself with `./package.sh` (see below):
 
 | Distribution | Command |
 |---|---|
-| Debian, Ubuntu, Mint | `sudo apt install ./cascade_1.0.0_all.deb` |
-| Fedora, RHEL, openSUSE | `sudo dnf install ./cascade-1.0.0-1.noarch.rpm` |
-| Arch, Manjaro | `sudo pacman -U cascade-1.0.0-1-any.pkg.tar.xz` |
+| Debian, Ubuntu, Mint | `sudo apt install ./cascade_1.0.1_all.deb` |
+| Fedora, RHEL, openSUSE | `sudo dnf install ./cascade-1.0.1-1.noarch.rpm` |
+| Arch, Manjaro | `sudo pacman -U cascade-1.0.1-1-any.pkg.tar.xz` |
 | Void | `sudo xbps-install -R dist cascade` |
-| Anything else | `tar xf cascade-1.0.0.tar.gz && cd cascade-1.0.0 && sudo ./install.sh --install-deps` |
+| Anything else | `tar xf cascade-1.0.1.tar.gz && cd cascade-1.0.1 && sudo ./install.sh --install-deps` |
 
 ### From source
 
