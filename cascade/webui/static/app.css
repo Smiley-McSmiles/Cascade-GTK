@@ -337,7 +337,11 @@ input.check:checked::before {
 .group-head .gtext { flex: 1; }
 .group-title { font-weight: 700; }
 .group-desc { color: var(--dim); font-size: 0.9em; margin-top: 2px; }
-.prefs-tabs { display: flex; gap: 2px; padding: 0 6px 6px; overflow-x: auto; flex: none; justify-content: center; }
+/* centred with auto margins, not justify-content: when the tabs overflow, centring would push the first ones
+   off the left edge where they cannot be scrolled to */
+.prefs-tabs { display: flex; gap: 2px; padding: 0 6px 6px; overflow-x: auto; flex: none; scrollbar-width: none; }
+.prefs-tabs > :first-child { margin-left: auto; }
+.prefs-tabs > :last-child { margin-right: auto; }
 .prefs-tabs button {
   border: 0; background: none; border-radius: 6px; padding: 6px 10px; cursor: pointer; display: flex; flex-direction: column;
   align-items: center; gap: 3px; font-size: 0.8em; font-weight: 700; min-width: 74px;
@@ -382,4 +386,11 @@ textarea.text {
   .dialog { border-radius: 14px 14px 0 0; align-self: flex-end; max-height: 92%; }
   .backdrop { padding: 0; align-items: flex-end; }
   .dialog .dbody { padding: 12px 12px 24px; }
+  /* like Adw.ViewSwitcherBar: the pages share the width, so all of them fit on a phone */
+  .prefs-tabs { gap: 0; padding: 0 4px 6px; }
+  .prefs-tabs > button { flex: 1 1 auto; min-width: 0; padding: 6px 2px; font-size: 0.72em; }
+  .prefs-tabs > button > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* small prompts (magnet links, renames) stay near the top, above the on-screen keyboard */
+  .backdrop.alert-backdrop { align-items: flex-start; padding: 12px; padding-top: max(12px, 8vh); }
+  .dialog.alert { align-self: auto; border-radius: 14px; max-height: 80dvh; }
 }

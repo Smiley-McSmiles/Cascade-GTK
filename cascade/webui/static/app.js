@@ -218,7 +218,7 @@ function dialog({ title, width, height, start, end, body, onclose, cls }) {
   return entry;
 }
 function alertDialog({ heading, body, extra, responses, onresponse }) {
-  const bd = h("div", { class: "backdrop" });
+  const bd = h("div", { class: "backdrop alert-backdrop" });
   const content = h("div", { class: "dbody" }, h("h2", { text: heading }), body ? h("p", { text: body }) : null, extra || null);
   const foot = h("div", { class: "dfoot" });
   const dlg = h("div", { class: "dialog alert", role: "alertdialog", style: "--w:400px" }, content, foot);
@@ -1232,7 +1232,7 @@ async function prefsDialog(pageId) {
     }
     pages[p.id] = pg;
     body.append(pg);
-    tabs.append(h("button", { role: "tab", "data-page": p.id, onclick: () => show(p.id) }, icon(PAGE_ICONS[p.id] || "cog"), p.title));
+    tabs.append(h("button", { role: "tab", "data-page": p.id, onclick: () => show(p.id) }, icon(PAGE_ICONS[p.id] || "cog"), h("span", { text: p.title })));
   }
   function show(id) {
     for (const [k, el] of Object.entries(pages)) el.classList.toggle("hidden", k !== id);
