@@ -58,6 +58,10 @@
         <ul>
           <li>Start when the computer starts now works for a headless system service under its own account</li>
           <li>The setting shows whether the system service is really enabled, and names the command to change it</li>
+          <li>Values in a torrent's Information list no longer wrap into a narrow column</li>
+          <li>A flatter app icon in the current GNOME style</li>
+          <li>Web interface on phones: every preferences page fits in the tab bar, and small prompts such as adding
+            magnet links open near the top, above the keyboard</li>
         </ul>
       </description>
     </release>

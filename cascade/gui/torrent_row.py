@@ -77,9 +77,11 @@ def copy_text(widget, text):
 
 def info_row(title, copy=False):
     row = Adw.ActionRow(title=title)
-    row.add_css_class("property")
-    val = Gtk.Label(xalign=1, wrap=True, wrap_mode=Pango.WrapMode.WORD_CHAR, selectable=True, max_width_chars=48,
+    val = Gtk.Label(xalign=1, wrap=True, wrap_mode=Pango.WrapMode.WORD_CHAR, selectable=True, max_width_chars=64,
                     justify=Gtk.Justification.RIGHT)
+    # a wrapping label only asks for its narrowest width, so the row squeezed values down to "N/o": ask for the
+    # whole value (up to a hash) and wrap only what is longer than that
+    val.connect("notify::label", lambda v, _p: v.set_width_chars(min(len(v.get_label()), 40)))
     val.add_css_class("dim-label")
     val.add_css_class("numeric")
     row.add_suffix(val)
