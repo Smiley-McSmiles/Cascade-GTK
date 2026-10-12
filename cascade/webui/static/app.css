@@ -219,9 +219,16 @@ select.select option { background: var(--popover-bg); color: var(--window-fg); }
 .row.disabled { opacity: 0.5; pointer-events: none; }
 .expander > .row .arrow { transition: transform 200ms; }
 .expander.open > .row .arrow { transform: rotate(-180deg); color: var(--accent); }
-.expander > .content { display: none; background: var(--fg-a03); }
-.expander.open > .content { display: block; }
-.expander > .content > .row { padding-left: 18px; }
+/* sections roll down like the card itself (Gtk.Revealer slide-down) */
+.expander > .ewrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 200ms ease; }
+.expander.open > .ewrap { grid-template-rows: 1fr; }
+.expander > .ewrap > .content {
+  min-height: 0; overflow: hidden; background: var(--fg-a03);
+  visibility: hidden; transition: visibility 0s linear 200ms;   /* closed rows cannot be tabbed into */
+}
+.expander.open > .ewrap > .content { visibility: visible; transition-delay: 0s; }
+.expander > .ewrap > .content > .row { padding-left: 18px; }
+@media (prefers-reduced-motion: reduce) { .expander > .ewrap, .reveal, .rolldown { transition: none; } }
 .row .prefix { flex: none; display: flex; align-items: center; color: var(--window-fg); }
 .row select.select { max-width: 100%; text-overflow: ellipsis; }
 .entry-row { display: flex; align-items: center; gap: 8px; min-height: 50px; padding: 4px 12px; border-top: 1px solid var(--fg-a07); }

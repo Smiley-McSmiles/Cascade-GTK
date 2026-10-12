@@ -60,6 +60,7 @@
             "file not found" errors, and its card turns red with a "!" icon</li>
           <li>Finished torrents are checked for deleted files, so they turn red even when no peer asks for them</li>
           <li>Resume now restarts a torrent that stopped because of an error, once the problem is fixed</li>
+          <li>Web interface: sections such as Information and Files roll open smoothly, like the card itself</li>
         </ul>
       </description>
     </release>

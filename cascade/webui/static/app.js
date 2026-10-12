@@ -300,7 +300,7 @@ function entryRow(title, value, onapply, { password, placeholder } = {}) {
 function expander(title, iconName, onopen) {
   const content = h("div", { class: "content" });
   const r = row(title, "", { prefix: icon(iconName), suffix: icon("down", "arrow"), activatable: true });
-  const el = h("div", { class: "expander" }, r, content);
+  const el = h("div", { class: "expander" }, r, h("div", { class: "ewrap" }, content));
   r.addEventListener("click", () => { el.classList.toggle("open"); if (el.classList.contains("open") && onopen) onopen(); });
   el.content = content;
   el.head = r;
