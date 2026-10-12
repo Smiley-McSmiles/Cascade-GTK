@@ -53,6 +53,7 @@ const ICONS = {
   upload: P("M8 1l4.5 4.5-1.06 1.06-2.69-2.69V10h-1.5V3.87L4.56 6.56 3.5 5.5zM2 9h1.5v3.5h9V9H14v4c0 .55-.45 1-1 1H3c-.55 0-1-.45-1-1z"),
   queue: P("M5 2.5h9V4H5zm0 4.75h9v1.5H5zM5 12h9v1.5H5zM1.5 1.5h2v3h-2zm0 4.75h2v3h-2zm0 4.75h2v3h-2z"),
   refresh: ST("M13 8a5 5 0 1 1-1.46-3.54M13 2v3.5H9.5"),
+  bang: P("M8 1a1.5 1.5 0 0 0-1.5 1.6l.45 6.95a1.05 1.05 0 0 0 2.1 0L9.5 2.6A1.5 1.5 0 0 0 8 1zm0 11a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"),
   error: P("M7.13 1.5a1 1 0 0 1 1.74 0l6.5 11.5a1 1 0 0 1-.87 1.5H1.5a1 1 0 0 1-.87-1.5zM7.25 5.5v4h1.5v-4zM8 11a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8z"),
   receive: ST("M2 5.5h11M10 2.5l3 3-3 3M14 10.5H3M6 7.5l-3 3 3 3"),
   copy: P("M5.5 1h7c.83 0 1.5.67 1.5 1.5v8c0 .83-.67 1.5-1.5 1.5h-7C4.67 12 4 11.33 4 10.5v-8C4 1.67 4.67 1 5.5 1zm0 1.5v8h7v-8zM2 5h1v6.5c0 .83.67 1.5 1.5 1.5H11v1H4.5A2.5 2.5 0 0 1 2 11.5z"),
@@ -125,7 +126,7 @@ let FILTERS = [["all", "All Torrents"], ["downloading", "Downloading"], ["seedin
 let SORTS = [["queue", "Queue order"], ["name", "Name"], ["added", "Date added"], ["progress", "Progress"],
   ["size", "Size"], ["down", "Download speed"], ["up", "Upload speed"], ["ratio", "Ratio"], ["eta", "Time left"]];
 const STATE_ICONS = { downloading: "download", seeding: "upload", paused: "pause", queued: "queue", checking: "refresh",
-  metadata: "receive", moving: "folder", error: "error" };
+  metadata: "receive", moving: "folder", error: "bang" };
 const SORT_KEYS = {
   queue: (t) => [t.queue >= 0 ? t.queue : 1 << 30, -t.added], name: (t) => t.name.toLowerCase(), added: (t) => t.added,
   progress: (t) => t.progress, size: (t) => t.size, down: (t) => t.down, up: (t) => t.up, ratio: (t) => t.ratio,
@@ -202,12 +203,18 @@ function menu(anchor, items, align) {
   return popover(anchor, box, align);
 }
 const dialogs = [];
-function dialog({ title, width, height, start, end, body, onclose, cls }) {
-  const bd = h("div", { class: "backdrop" });
+let lastDialogClosed = 0;
+// a dialog that replaces another (Add Magnet Links -> Add Torrent) keeps the shade instead of fading it in again
+function backdrop(cls) {
+  const chained = dialogs.length > 0 || performance.now() - lastDialogClosed < 400;
+  return h("div", { class: "backdrop" + (cls ? " " + cls : "") + (chained ? " chained" : "") });
+}
+function dialog({ title, width, height, start, end, body, onclose, cls, defaultBtn }) {
+  const bd = backdrop();
   const dlg = h("div", { class: "dialog " + (cls || ""), role: "dialog", "aria-modal": "true", "aria-label": title,
     style: `--w:${width || 560}px;--h:${height || 720}px` });
-  const close = () => { bd.remove(); const i = dialogs.indexOf(entry); if (i >= 0) dialogs.splice(i, 1); if (onclose) onclose(); };
-  const entry = { close, el: dlg };
+  const close = () => { bd.remove(); lastDialogClosed = performance.now(); const i = dialogs.indexOf(entry); if (i >= 0) dialogs.splice(i, 1); if (onclose) onclose(); };
+  const entry = { close, el: dlg, defaultBtn };
   const head = h("div", { class: "dhead" }, start || null, h("div", { class: "dtitle", text: title || "" }),
     h("div", { class: "end" }, end !== undefined ? end : iconBtn("close", "Close", close, "circular")));
   dlg.append(head, body);
@@ -218,14 +225,16 @@ function dialog({ title, width, height, start, end, body, onclose, cls }) {
   return entry;
 }
 function alertDialog({ heading, body, extra, responses, onresponse }) {
-  const bd = h("div", { class: "backdrop alert-backdrop" });
+  const bd = backdrop("alert-backdrop");
   const content = h("div", { class: "dbody" }, h("h2", { text: heading }), body ? h("p", { text: body }) : null, extra || null);
   const foot = h("div", { class: "dfoot" });
   const dlg = h("div", { class: "dialog alert", role: "alertdialog", style: "--w:400px" }, content, foot);
-  const entry = { close: () => { bd.remove(); dialogs.splice(dialogs.indexOf(entry), 1); }, el: dlg };
+  const entry = { close: () => { bd.remove(); lastDialogClosed = performance.now(); dialogs.splice(dialogs.indexOf(entry), 1); }, el: dlg };
   for (const [id, label, appearance] of responses) {
-    foot.append(h("button", { class: appearance || "", text: label,
-      onclick: () => { entry.close(); if (onresponse) onresponse(id); } }));
+    const b = h("button", { class: appearance || "", text: label,
+      onclick: () => { entry.close(); if (onresponse) onresponse(id); } });
+    if (appearance === "suggested") entry.defaultBtn = b;     // never a destructive one: Enter must not delete
+    foot.append(b);
   }
   bd.append(dlg);
   document.body.append(bd);
@@ -238,7 +247,7 @@ function askText(heading, placeholder, button, cb, text = "", body = "") {
   const inp = h("input", { class: "entry", placeholder, value: text, style: "width:100%" });
   const d = alertDialog({ heading, body, extra: inp, responses: [["cancel", "Cancel"], ["ok", button, "suggested"]],
     onresponse: (r) => { if (r === "ok" && inp.value.trim()) cb(inp.value.trim()); } });
-  inp.addEventListener("keydown", (e) => { if (e.key === "Enter" && inp.value.trim()) { d.close(); cb(inp.value.trim()); } });
+  inp.addEventListener("keydown", (e) => { if (e.key === "Enter" && inp.value.trim()) { e.preventDefault(); d.close(); cb(inp.value.trim()); } });
 }
 
 // ------------------------------------------------------------------ rows (the libadwaita row types)
@@ -291,6 +300,7 @@ function entryRow(title, value, onapply, { password, placeholder } = {}) {
   const inp = h("input", { type: password ? "password" : "text", placeholder: placeholder || title, value: value || "", "aria-label": title });
   const apply = h("button", { class: "btn suggested circular icon-only hidden", "aria-label": "Apply", onclick: () => { apply.classList.add("hidden"); onapply(inp.value); } }, icon("check"));
   inp.addEventListener("input", () => apply.classList.remove("hidden"));
+  // Enter applies and, inside a dialog, also reaches its main button (like an entry that activates the default)
   inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { apply.classList.add("hidden"); onapply(inp.value); } });
   const el = h("div", { class: "entry-row" }, inp, apply);
   el.input = inp;
@@ -299,7 +309,7 @@ function entryRow(title, value, onapply, { password, placeholder } = {}) {
 function expander(title, iconName, onopen) {
   const content = h("div", { class: "content" });
   const r = row(title, "", { prefix: icon(iconName), suffix: icon("down", "arrow"), activatable: true });
-  const el = h("div", { class: "expander" }, r, content);
+  const el = h("div", { class: "expander" }, r, h("div", { class: "ewrap" }, content));
   r.addEventListener("click", () => { el.classList.toggle("open"); if (el.classList.contains("open") && onopen) onopen(); });
   el.content = content;
   el.head = r;
@@ -510,6 +520,7 @@ function onSync(d) {
 }
 function onEvent(ev) {
   if (ev.kind === "finished") toast(ev.message);
+  else if (ev.kind === "torrent_error") toast(ev.message, { label: "Show", cb: () => revealTorrent(ev.id) }, 8000);
   else if (ev.kind === "metadata") toast(ev.message, { label: "Choose Files", cb: () => revealTorrent(ev.id, "files") }, 8000);
   else if (ev.level === "error" || ev.kind === "limit" || (ev.level === "warning" && ["interface", "webui", "ipfilter", "port"].includes(ev.kind))) toast(ev.message, null, 6000);
 }
@@ -685,7 +696,7 @@ function speedsFor(t) {
   if (t.up > 0) out.push("↑ " + fmtSpeed(t.up));
   return out.join("   ");
 }
-const isPaused = (t) => t.state === "paused" || t.state === "queued" || (t.paused && !t.auto_managed);
+const isPaused = (t) => t.state === "paused" || t.state === "queued" || t.state === "error" || (t.paused && !t.auto_managed);
 
 class Card {
   constructor(t) {
@@ -1141,7 +1152,7 @@ function addDialog(src, info) {
     body.append(g);
     upd();
   }
-  const d = dialog({ title: "Add Torrent", width: 560, height: 720, body, start: h("button", { class: "btn", text: "Cancel", onclick: () => d.close() }), end: addBtn });
+  const d = dialog({ title: "Add Torrent", width: 560, height: 720, body, start: h("button", { class: "btn", text: "Cancel", onclick: () => d.close() }), end: addBtn, defaultBtn: addBtn });
   addBtn.addEventListener("click", () => {
     const opts = {};
     for (const [k, inp] of Object.entries(sw)) opts[k] = inp.checked;
@@ -1180,7 +1191,7 @@ function folderPicker(title, start, cb) {
     cur = p; setText(pathLbl, p + "  ·  will be created"); list.replaceChildren(row("New folder", p));
   }) });
   const body = h("div", { class: "dbody" }, h("div", { class: "group-head" }, h("div", { class: "gtext" }, h("div", { class: "group-title", text: "Location on the Cascade computer" }), pathLbl), newBtn), list);
-  const d = dialog({ title, width: 520, height: 600, body, start: h("button", { class: "btn", text: "Cancel", onclick: () => d.close() }), end: choose });
+  const d = dialog({ title, width: 520, height: 600, body, start: h("button", { class: "btn", text: "Cancel", onclick: () => d.close() }), end: choose, defaultBtn: choose });
   choose.addEventListener("click", () => { d.close(); cb(cur); });
   load(start || "");
 }
@@ -1538,6 +1549,20 @@ document.addEventListener("keydown", (e) => {
     if (S.selection) { setSelection(false); return; }
     if (S.searchBar && !S.searchBar.classList.contains("hidden")) { toggleSearch(false); return; }
     if (S.filterBar && S.filterBar.classList.contains("open")) { toggleFilterBar(false); return; }
+  }
+  if (e.key === "Enter" && dialogs.length && !openPopover && !e.isComposing && !e.defaultPrevented) {
+    // Enter activates the dialog's main button (Add, Select...), like a default widget in GTK.  Not on a focused
+    // button, link or list (they act themselves), and in a text box only with Ctrl+Enter (Enter is a new line)
+    const top = dialogs[dialogs.length - 1];
+    const a = document.activeElement || document.body;
+    const own = a.closest && a.closest("button, a, select, summary, [role=button], [role=switch], [contenteditable]");
+    const multi = a.tagName === "TEXTAREA";
+    if (top.defaultBtn && !top.defaultBtn.disabled && top.el.isConnected && (!a.closest || !a.closest(".dialog") || top.el.contains(a))
+        && !own && (!multi || e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      top.defaultBtn.click();
+      return;
+    }
   }
   if (!S.connected) return;
   const ctrl = e.ctrlKey || e.metaKey;

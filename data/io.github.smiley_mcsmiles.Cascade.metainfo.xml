@@ -53,6 +53,20 @@
   </supports>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.0.2" date="2026-10-12">
+      <description>
+        <ul>
+          <li>A torrent whose files were deleted now stops with one clear message instead of a flood of
+            "file not found" errors, and its card turns red with a "!" icon</li>
+          <li>Finished torrents are checked for deleted files, so they turn red even when no peer asks for them</li>
+          <li>Resume now restarts a torrent that stopped because of an error, once the problem is fixed</li>
+          <li>Web interface: sections such as Information and Files roll open smoothly, like the card itself</li>
+          <li>Enter adds the torrent in the Add Torrent dialog, and Ctrl+Enter submits the magnet link box</li>
+          <li>Web interface: dialogs no longer flicker while they open, and Add Magnet Links hands over to
+            Add Torrent without the background flashing</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.1" date="2026-10-11">
       <description>
         <ul>

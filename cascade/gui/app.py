@@ -188,8 +188,8 @@ class CascadeApp(Adw.Application):
         sm.set_color_scheme({"light": Adw.ColorScheme.FORCE_LIGHT, "dark": Adw.ColorScheme.FORCE_DARK}.get(
             theme, Adw.ColorScheme.DEFAULT))
 
-    def notify(self, title, body, nid=None):
-        if not (self.win and self.win.settings.get("notify.finished", True)):
+    def notify(self, title, body, nid=None, always=False):
+        if not self.win or not (always or self.win.settings.get("notify.finished", True)):
             return
         n = Gio.Notification.new(title)
         n.set_body(body)

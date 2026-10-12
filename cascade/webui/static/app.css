@@ -163,7 +163,10 @@ select.select option { background: var(--popover-bg); color: var(--window-fg); }
 .card.state-seeding .state-icon { background: rgba(46, 194, 126, 0.15); color: var(--success); }
 .card.state-paused .state-icon, .card.state-queued .state-icon { background: var(--fg-a07); color: var(--dim); }
 .card.state-checking .state-icon, .card.state-metadata .state-icon, .card.state-moving .state-icon { background: rgba(229, 165, 10, 0.16); color: var(--warning); }
-.card.state-error .state-icon { background: rgba(224, 27, 36, 0.15); color: var(--error); }
+/* a stopped-by-error torrent: the whole card turns red, the way downloading is blue and seeding green */
+.card.state-error { background: color-mix(in srgb, var(--card-bg) 88%, var(--destructive-bg)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--error) 45%, transparent), var(--shadow); }
+.card.state-error .state-icon { background: var(--destructive-bg); color: #ffffff; }
+.card.state-error .sub { color: var(--error); font-weight: 700; }
 .card .mid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .card .trow { display: flex; gap: 8px; align-items: center; min-width: 0; }
 .card .name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
@@ -216,9 +219,19 @@ select.select option { background: var(--popover-bg); color: var(--window-fg); }
 .row.disabled { opacity: 0.5; pointer-events: none; }
 .expander > .row .arrow { transition: transform 200ms; }
 .expander.open > .row .arrow { transform: rotate(-180deg); color: var(--accent); }
-.expander > .content { display: none; background: var(--fg-a03); }
-.expander.open > .content { display: block; }
-.expander > .content > .row { padding-left: 18px; }
+/* sections roll down like the card itself (Gtk.Revealer slide-down) */
+.expander > .ewrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 200ms ease; }
+.expander.open > .ewrap { grid-template-rows: 1fr; }
+.expander > .ewrap > .content {
+  min-height: 0; overflow: hidden; background: var(--fg-a03);
+  visibility: hidden; transition: visibility 0s linear 200ms;   /* closed rows cannot be tabbed into */
+}
+.expander.open > .ewrap > .content { visibility: visible; transition-delay: 0s; }
+.expander > .ewrap > .content > .row { padding-left: 18px; }
+@media (prefers-reduced-motion: reduce) {
+  .expander > .ewrap, .reveal, .rolldown { transition: none; }
+  .backdrop, .dialog { animation: none; }
+}
 .row .prefix { flex: none; display: flex; align-items: center; color: var(--window-fg); }
 .row select.select { max-width: 100%; text-overflow: ellipsis; }
 .entry-row { display: flex; align-items: center; gap: 8px; min-height: 50px; padding: 4px 12px; border-top: 1px solid var(--fg-a07); }
@@ -310,15 +323,20 @@ input.check:checked::before {
 /* ---------- dialogs (Adw.Dialog) ---------- */
 .backdrop {
   position: fixed; inset: 0; background: rgba(0, 0, 0, 0.3); z-index: 30; display: flex; align-items: center; justify-content: center;
-  padding: 12px; animation: fade 150ms ease;
+  padding: 12px; animation: dim 150ms ease both;
 }
-@keyframes fade { from { opacity: 0; } }
+/* only the shade fades: fading the backdrop's opacity would fade the dialog inside it a second time, and two
+   opacity layers animating at once flicker (Firefox especially).  "both" holds the start state on the first
+   frame, so a dialog never flashes in fully drawn before its animation starts */
+@keyframes dim { from { background-color: rgba(0, 0, 0, 0); } }
+.backdrop.chained { animation: none; }      /* one dialog replacing another: the shade stays, no flash */
 .dialog {
   background: var(--dialog-bg); border-radius: 14px; width: min(var(--w, 560px), 100%); max-height: min(var(--h, 720px), 100%);
-  display: flex; flex-direction: column; overflow: hidden; animation: pop 180ms ease;
+  display: flex; flex-direction: column; overflow: hidden; animation: pop 180ms ease both;
+  will-change: transform, opacity; backface-visibility: hidden;
   box-shadow: 0 1px 5px 1px rgba(0, 0, 0, 0.09), 0 2px 14px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px var(--fg-a07);
 }
-@keyframes pop { from { transform: scale(0.94); opacity: 0; } }
+@keyframes pop { from { transform: scale(0.94); opacity: 0; } to { transform: none; opacity: 1; } }
 .dialog .dhead { display: flex; align-items: center; gap: 6px; padding: 6px; min-height: 47px; position: relative; flex: none; }
 .dialog .dhead .dtitle { position: absolute; left: 50%; transform: translateX(-50%); font-weight: 700; white-space: nowrap; }
 .dialog .dhead .end { margin-left: auto; display: flex; gap: 6px; }

@@ -36,6 +36,13 @@ class AddDialog(Adw.Dialog):
         hb.pack_end(self.add_btn)
         tv.add_top_bar(hb)
         self.set_default_widget(self.add_btn)
+        # Enter adds, wherever the focus is, unless the focused widget uses Enter itself (a button, a switch)
+        keys = Gtk.ShortcutController(propagation_phase=Gtk.PropagationPhase.BUBBLE)
+        keys.add_shortcut(Gtk.Shortcut(trigger=Gtk.ShortcutTrigger.parse_string("Return|KP_Enter"),
+                                       action=Gtk.CallbackAction.new(self._on_enter)))
+        self.add_controller(keys)
+        # GTK would focus Cancel, the first button, and Enter would cancel: start on Add like GNOME's dialogs
+        self.connect("map", lambda *_: self.add_btn.grab_focus())
 
         page = Adw.PreferencesPage()
         tv.set_content(page)
@@ -84,7 +91,7 @@ class AddDialog(Adw.Dialog):
         self.path_row.add_suffix(self.free_label)
         self.path_row.add_suffix(Gtk.Box())
 
-        self.label_row = Adw.EntryRow(title="Label")
+        self.label_row = Adw.EntryRow(title="Label", activates_default=True)
         if labels:
             mb = Gtk.MenuButton(icon_name="pan-down-symbolic", valign=Gtk.Align.CENTER, tooltip_text="Labels")
             mb.add_css_class("flat")
@@ -164,6 +171,11 @@ class AddDialog(Adw.Dialog):
             self.free_label.set_label("%s free" % util.fmt_size(free) if free >= 0 else "")
 
         self.win.choose_folder("Save Torrent To", done, self.save_path)
+
+    def _on_enter(self, *_a):
+        if self.add_btn.get_sensitive():
+            self.add_btn.emit("clicked")
+        return True
 
     def _on_add(self, _b):
         opts = {k: r.get_active() for k, r in self.sw.items()}

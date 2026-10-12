@@ -22,7 +22,7 @@ STATE_ICONS = {
     "checking": "view-refresh-symbolic",
     "metadata": "network-receive-symbolic",
     "moving": "folder-symbolic",
-    "error": "dialog-error-symbolic",
+    "error": "cascade-error-symbolic",
 }
 PRIO_LABELS = ["Skip", "Low", "Normal", "High"]
 PRIO_VALUES = [0, 1, 4, 7]
@@ -146,6 +146,7 @@ class TorrentRow(Gtk.ListBoxRow):
         self.sub = Gtk.Label(xalign=0, ellipsize=Pango.EllipsizeMode.END, hexpand=True)
         self.sub.add_css_class("caption")
         self.sub.add_css_class("dim-label")
+        self.sub.add_css_class("torrent-sub")
         self.sub.add_css_class("numeric")
         srow.append(self.sub)
         self.speed = Gtk.Label(xalign=1)
@@ -183,7 +184,7 @@ class TorrentRow(Gtk.ListBoxRow):
             self.icon.set_from_icon_name(STATE_ICONS.get(t["state"], "folder-download-symbolic"))
             self.icon.set_tooltip_text(util.STATE_LABELS.get(t["state"], t["state"]) + (" (forced)" if t["forced"]
                                                                                         else ""))
-        paused = t["state"] in ("paused", "queued") or (t["paused"] and not t["auto_managed"])
+        paused = t["state"] in ("paused", "queued", "error") or (t["paused"] and not t["auto_managed"])
         self.toggle_btn.set_icon_name("media-playback-start-symbolic" if paused else "media-playback-pause-symbolic")
         self.toggle_btn.set_tooltip_text("Resume" if paused else "Pause")
         self.progress.set_fraction(t["progress"])
@@ -197,7 +198,7 @@ class TorrentRow(Gtk.ListBoxRow):
 
     def _on_toggle_pause(self, _b):
         t = self.data
-        paused = t["state"] in ("paused", "queued") or (t["paused"] and not t["auto_managed"])
+        paused = t["state"] in ("paused", "queued", "error") or (t["paused"] and not t["auto_managed"])
         self.win.torrent_action("torrents.resume" if paused else "torrents.pause", [self.tid])
 
     # ------------------------------------------------------------ expansion
@@ -560,7 +561,7 @@ class Details(Gtk.Box):
         T["seeds"].set_label("%d (%d)" % (t["seeds"], max(0, t["seeds_total"])))
         T["peers"].set_label("%d (%d)" % (t["peers"], max(0, t["peers_total"])))
         T["size"].set_label(util.fmt_size(t["size"]) if t["size"] else "Unknown")
-        paused = t["state"] in ("paused", "queued") or (t["paused"] and not t["auto_managed"])
+        paused = t["state"] in ("paused", "queued", "error") or (t["paused"] and not t["auto_managed"])
         self.pause_btn.get_child().set_icon_name("media-playback-start-symbolic" if paused
                                                  else "media-playback-pause-symbolic")
         self.pause_btn.get_child().set_label("Resume" if paused else "Pause")

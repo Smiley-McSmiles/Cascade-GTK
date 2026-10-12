@@ -8,6 +8,7 @@ one set of settings.
 
 import base64
 import collections
+import errno
 import logging
 import os
 import random
@@ -854,6 +855,63 @@ class Engine:
             return "seeding"
         return "downloading"
 
+    def _error_text(self, h, st, m):
+        """Why the torrent stopped, in words, or ""."""
+        missing = m.get("missing")
+        if missing:
+            return "Files are missing: %s" % ", ".join(os.path.basename(p) for p in missing[:3]) + \
+                (" and %d more" % (len(missing) - 3) if len(missing) > 3 else "")
+        if not st.errc.value():
+            return ""
+        path = ""
+        idx = getattr(st, "error_file", -1)
+        if idx is not None and idx >= 0:
+            try:
+                path = os.path.basename(h.torrent_file().files().file_path(idx))
+            except Exception:
+                path = ""
+        if st.errc.value() == errno.ENOENT:
+            return "Files are missing" + (": " + path if path else "")
+        return st.errc.message() + (" (%s)" % path if path else "")
+
+    def _report_error(self, tid, h, text):
+        """One event and one notification per error, however many times libtorrent repeats it."""
+        with self.lock:
+            m = self.meta.get(tid)
+            if m is None or m.get("error_reported"):
+                return
+            m["error_reported"] = True
+        name = h.status(Q_NAME).name or m.get("name") or tid
+        self.event("error", "torrent_error", "“%s” stopped: %s" % (name, text), tid, name)
+        self._notify("Torrent stopped", "%s: %s" % (name, text), always=True)
+
+    def _check_missing(self):
+        """Finished torrents whose files were deleted: stop them before peers ask for pieces that are gone."""
+        for tid, h in self._items():
+            try:
+                st = h.status(Q_SAVE_PATH)
+                if not st.is_finished or st.paused or st.moving_storage or st.errc.value() or not st.has_metadata:
+                    continue
+                ti = h.torrent_file()
+                fs = ti.files()
+                prios = h.get_file_priorities()
+                missing = []
+                for i in range(min(fs.num_files(), 1000)):
+                    if fs.file_flags(i) & fs.flag_pad_file or not fs.file_size(i) or (i < len(prios) and not prios[i]):
+                        continue
+                    p = os.path.join(st.save_path, fs.file_path(i))
+                    if not os.path.exists(p) and not os.path.exists(p + ".part"):
+                        missing.append(fs.file_path(i))
+                if not missing:
+                    continue
+                with self.lock:
+                    self.meta.setdefault(tid, {})["missing"] = missing
+                h.unset_flags(TF.auto_managed)
+                h.pause()
+                self._report_error(tid, h, self._error_text(h, st, self.meta[tid]))
+            except Exception:
+                log.debug("missing-file check failed for %s", tid, exc_info=True)
+
     def _summary(self, tid, h, st, m):
         size, done = st.total_wanted, st.total_wanted_done
         down, up = st.download_payload_rate, st.upload_payload_rate
@@ -874,9 +932,11 @@ class Engine:
             if cur:
                 trk = urllib.parse.urlsplit(cur).hostname or ""
                 m["tracker"] = trk
-        err = ""
-        if st.errc.value():
-            err = st.errc.message() + ((" (%s)" % st.error_file) if getattr(st, "error_file", -1) >= 0 else "")
+        err = self._error_text(h, st, m)
+        if err:
+            state = "error"
+        elif m.get("error_reported"):
+            m.pop("error_reported", None)          # it recovered: the next error is news again
         return {
             "id": tid,
             "name": st.name or m.get("name") or tid,
@@ -1198,14 +1258,24 @@ class Engine:
                 h.set_flags(TF.auto_managed)
             else:
                 h.unset_flags(TF.auto_managed)
-            h.resume()
             with self.lock:
-                self.meta.get(tid, {}).pop("limit_reached", None)
+                m = self.meta.get(tid, {})
+                m.pop("limit_reached", None)
+                m.pop("missing", None)
+                m.pop("error_reported", None)
+            h.clear_error()                       # libtorrent keeps a stopped-by-error torrent stopped otherwise
+            h.resume()
             self.save_resume(h)
 
     def recheck(self, ids):
         for tid in ids:
-            self._h(tid).force_recheck()
+            h = self._h(tid)
+            with self.lock:
+                m = self.meta.get(tid, {})
+                m.pop("missing", None)
+                m.pop("error_reported", None)
+            h.clear_error()
+            h.force_recheck()
 
     def reannounce(self, ids):
         for tid in ids:
@@ -1555,9 +1625,9 @@ class Engine:
         except (OSError, ValueError) as e:
             self.event("error", "hook", "Could not run “%s”: %s" % (cmd, e), tid)
 
-    def _notify(self, title, body):
+    def _notify(self, title, body, always=False):
         """Desktop notification when no GTK window is open to show it (the window shows its own)."""
-        if not self.settings["notify.finished"] or time.time() - self.last_gui_poll < 15:
+        if not (always or self.settings["notify.finished"]) or time.time() - self.last_gui_poll < 15:
             return
         exe = shutil.which("notify-send")
         if exe and (os.environ.get("DBUS_SESSION_BUS_ADDRESS") or os.environ.get("XDG_RUNTIME_DIR")):
@@ -1636,7 +1706,18 @@ class Engine:
             self.event("error", "moved", "Moving failed: %s" % a.message(), tid)
         elif isinstance(a, (lt.torrent_error_alert, lt.file_error_alert)):
             tid = self._tid_of(a.handle)
-            self.event("error", "error", a.message(), tid)
+            log.debug("%s", a.message())
+            if tid:
+                h = a.handle
+                with self.lock:
+                    m = dict(self.meta.get(tid, {}))
+                text = self._error_text(h, h.status(0), m)
+                if not text:
+                    e = a.error
+                    text = "Files are missing" if e.value() == errno.ENOENT else e.message()
+                    if isinstance(a, lt.file_error_alert) and a.filename():
+                        text += ": " + os.path.basename(a.filename())
+                self._report_error(tid, h, text)
         elif isinstance(a, lt.listen_succeeded_alert):
             ep = "%s:%d" % (a.address, a.port)
             if ep not in self.listen_info["ok"]:
@@ -1756,6 +1837,8 @@ class Engine:
                 self._scan_watch()
         if n % 10 == 0:
             self._check_seed_limits()
+        if n % 30 == 15:
+            self._check_missing()
         if n % 60 == 0:
             self._save_totals()
             if s["ipfilter.enabled"] and not self.ipfilter_info["loading"] and util.is_url(s["ipfilter.source"]):

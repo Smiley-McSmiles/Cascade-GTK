@@ -647,6 +647,12 @@ class MainWindow(Adw.ApplicationWindow):
             t = Adw.Toast(title=GLib.markup_escape_text(ev["message"]), button_label="Choose Files", timeout=8)
             t.connect("button-clicked", lambda *_: self.reveal_torrent(ev.get("id"), "files"))
             self.toasts.add_toast(t)
+        elif kind == "torrent_error":
+            # the engine sends this once per error, however often libtorrent repeats it
+            self.app.notify("Torrent stopped", ev["message"], "error-" + (ev.get("id") or ""), always=True)
+            t = Adw.Toast(title=GLib.markup_escape_text(ev["message"]), button_label="Show", timeout=8)
+            t.connect("button-clicked", lambda *_: self.reveal_torrent(ev.get("id")))
+            self.toasts.add_toast(t)
         elif kind == "limit" or kind == "moved" and level == "error":
             self.toast(ev["message"])
         elif level == "error" or kind in ("interface", "webui", "ipfilter", "port") and level == "warning":
@@ -973,6 +979,12 @@ class MainWindow(Adw.ApplicationWindow):
             self.add_many(b.get_text(b.get_start_iter(), b.get_end_iter(), False))
 
         d.connect("response", done)
+        # Enter is a new line here (several links); Ctrl+Enter adds, like the web interface
+        keys = Gtk.ShortcutController(propagation_phase=Gtk.PropagationPhase.CAPTURE)
+        submit = Gtk.CallbackAction.new(lambda *_: (d.emit("response", "ok"), d.close(), True)[2])
+        keys.add_shortcut(Gtk.Shortcut(trigger=Gtk.ShortcutTrigger.parse_string("<Control>Return|<Control>KP_Enter"),
+                                       action=submit))
+        tv.add_controller(keys)
         d.present(self)
         tv.grab_focus()
 
