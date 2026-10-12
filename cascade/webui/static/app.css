@@ -163,7 +163,10 @@ select.select option { background: var(--popover-bg); color: var(--window-fg); }
 .card.state-seeding .state-icon { background: rgba(46, 194, 126, 0.15); color: var(--success); }
 .card.state-paused .state-icon, .card.state-queued .state-icon { background: var(--fg-a07); color: var(--dim); }
 .card.state-checking .state-icon, .card.state-metadata .state-icon, .card.state-moving .state-icon { background: rgba(229, 165, 10, 0.16); color: var(--warning); }
-.card.state-error .state-icon { background: rgba(224, 27, 36, 0.15); color: var(--error); }
+/* a stopped-by-error torrent: the whole card turns red, the way downloading is blue and seeding green */
+.card.state-error { background: color-mix(in srgb, var(--card-bg) 88%, var(--destructive-bg)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--error) 45%, transparent), var(--shadow); }
+.card.state-error .state-icon { background: var(--destructive-bg); color: #ffffff; }
+.card.state-error .sub { color: var(--error); font-weight: 700; }
 .card .mid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .card .trow { display: flex; gap: 8px; align-items: center; min-width: 0; }
 .card .name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }

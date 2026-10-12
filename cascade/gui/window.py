@@ -647,6 +647,12 @@ class MainWindow(Adw.ApplicationWindow):
             t = Adw.Toast(title=GLib.markup_escape_text(ev["message"]), button_label="Choose Files", timeout=8)
             t.connect("button-clicked", lambda *_: self.reveal_torrent(ev.get("id"), "files"))
             self.toasts.add_toast(t)
+        elif kind == "torrent_error":
+            # the engine sends this once per error, however often libtorrent repeats it
+            self.app.notify("Torrent stopped", ev["message"], "error-" + (ev.get("id") or ""), always=True)
+            t = Adw.Toast(title=GLib.markup_escape_text(ev["message"]), button_label="Show", timeout=8)
+            t.connect("button-clicked", lambda *_: self.reveal_torrent(ev.get("id")))
+            self.toasts.add_toast(t)
         elif kind == "limit" or kind == "moved" and level == "error":
             self.toast(ev["message"])
         elif level == "error" or kind in ("interface", "webui", "ipfilter", "port") and level == "warning":

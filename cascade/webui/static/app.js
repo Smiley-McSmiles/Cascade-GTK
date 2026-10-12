@@ -53,6 +53,7 @@ const ICONS = {
   upload: P("M8 1l4.5 4.5-1.06 1.06-2.69-2.69V10h-1.5V3.87L4.56 6.56 3.5 5.5zM2 9h1.5v3.5h9V9H14v4c0 .55-.45 1-1 1H3c-.55 0-1-.45-1-1z"),
   queue: P("M5 2.5h9V4H5zm0 4.75h9v1.5H5zM5 12h9v1.5H5zM1.5 1.5h2v3h-2zm0 4.75h2v3h-2zm0 4.75h2v3h-2z"),
   refresh: ST("M13 8a5 5 0 1 1-1.46-3.54M13 2v3.5H9.5"),
+  bang: P("M8 1a1.5 1.5 0 0 0-1.5 1.6l.45 6.95a1.05 1.05 0 0 0 2.1 0L9.5 2.6A1.5 1.5 0 0 0 8 1zm0 11a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"),
   error: P("M7.13 1.5a1 1 0 0 1 1.74 0l6.5 11.5a1 1 0 0 1-.87 1.5H1.5a1 1 0 0 1-.87-1.5zM7.25 5.5v4h1.5v-4zM8 11a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8z"),
   receive: ST("M2 5.5h11M10 2.5l3 3-3 3M14 10.5H3M6 7.5l-3 3 3 3"),
   copy: P("M5.5 1h7c.83 0 1.5.67 1.5 1.5v8c0 .83-.67 1.5-1.5 1.5h-7C4.67 12 4 11.33 4 10.5v-8C4 1.67 4.67 1 5.5 1zm0 1.5v8h7v-8zM2 5h1v6.5c0 .83.67 1.5 1.5 1.5H11v1H4.5A2.5 2.5 0 0 1 2 11.5z"),
@@ -125,7 +126,7 @@ let FILTERS = [["all", "All Torrents"], ["downloading", "Downloading"], ["seedin
 let SORTS = [["queue", "Queue order"], ["name", "Name"], ["added", "Date added"], ["progress", "Progress"],
   ["size", "Size"], ["down", "Download speed"], ["up", "Upload speed"], ["ratio", "Ratio"], ["eta", "Time left"]];
 const STATE_ICONS = { downloading: "download", seeding: "upload", paused: "pause", queued: "queue", checking: "refresh",
-  metadata: "receive", moving: "folder", error: "error" };
+  metadata: "receive", moving: "folder", error: "bang" };
 const SORT_KEYS = {
   queue: (t) => [t.queue >= 0 ? t.queue : 1 << 30, -t.added], name: (t) => t.name.toLowerCase(), added: (t) => t.added,
   progress: (t) => t.progress, size: (t) => t.size, down: (t) => t.down, up: (t) => t.up, ratio: (t) => t.ratio,
@@ -510,6 +511,7 @@ function onSync(d) {
 }
 function onEvent(ev) {
   if (ev.kind === "finished") toast(ev.message);
+  else if (ev.kind === "torrent_error") toast(ev.message, { label: "Show", cb: () => revealTorrent(ev.id) }, 8000);
   else if (ev.kind === "metadata") toast(ev.message, { label: "Choose Files", cb: () => revealTorrent(ev.id, "files") }, 8000);
   else if (ev.level === "error" || ev.kind === "limit" || (ev.level === "warning" && ["interface", "webui", "ipfilter", "port"].includes(ev.kind))) toast(ev.message, null, 6000);
 }
@@ -685,7 +687,7 @@ function speedsFor(t) {
   if (t.up > 0) out.push("↑ " + fmtSpeed(t.up));
   return out.join("   ");
 }
-const isPaused = (t) => t.state === "paused" || t.state === "queued" || (t.paused && !t.auto_managed);
+const isPaused = (t) => t.state === "paused" || t.state === "queued" || t.state === "error" || (t.paused && !t.auto_managed);
 
 class Card {
   constructor(t) {

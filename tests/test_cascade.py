@@ -629,6 +629,35 @@ class DaemonTest(unittest.TestCase):
             self.assertEqual(t["sequential"], before[tid]["sequential"])
         self.assertEqual(self.leecher.call("settings.get", keys=["queue.max_downloads"])["queue.max_downloads"], 7)
 
+    def test_8_deleted_files(self):
+        """Deleting a finished torrent's files stops it once, in red, with one message; Resume brings it back."""
+        d = self.seeder
+        src = os.path.join(self.base, "gone", "iso")
+        os.makedirs(src)
+        with open(os.path.join(src, "disc.iso"), "wb") as fh:
+            fh.write(os.urandom(300_000))
+        job = d.call("create.start", path=src, trackers=[])
+        st = wait_for(lambda: (lambda s: s if s["state"] != "hashing" else None)(d.call("create.status", job=job)), 30)
+        tid = d.call("torrents.add", data=st["result"]["data"], options={"save_path": os.path.dirname(src)})["id"]
+        get = lambda: [t for t in d.call("torrents.list")["torrents"] if t["id"] == tid][0]  # noqa: E731
+        self.assertTrue(wait_for(lambda: get()["state"] == "seeding", 20))
+        seq = max([e["seq"] for e in d.call("events.poll", since=0)] or [0])
+        backup = src + ".bak"
+        shutil.move(src, backup)
+        t = wait_for(lambda: (lambda t: t if t["state"] == "error" else None)(get()), 45)
+        self.assertIsNotNone(t, get())
+        self.assertEqual(t["error"], "Files are missing: disc.iso")
+        time.sleep(31)                                    # another round of checks: still one message
+        ev = [e for e in d.call("events.poll", since=seq) if e["level"] == "error" and e["id"] == tid]
+        self.assertEqual([e["kind"] for e in ev], ["torrent_error"], ev)
+        self.assertIn("stopped: Files are missing", ev[0]["message"])
+        shutil.move(backup, src)
+        d.call("torrents.resume", ids=[tid])
+        t = wait_for(lambda: (lambda t: t if t["state"] == "seeding" else None)(get()), 20)
+        self.assertIsNotNone(t, get())
+        self.assertEqual(t["error"], "")
+        d.call("torrents.remove", ids=[tid])
+
 
 @unittest.skipUnless(HAVE_LT and have_gtk(), "needs libtorrent, GTK 4, libadwaita and a display")
 class GuiSmokeTest(unittest.TestCase):
