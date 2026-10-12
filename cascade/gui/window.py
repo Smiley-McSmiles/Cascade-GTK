@@ -979,6 +979,12 @@ class MainWindow(Adw.ApplicationWindow):
             self.add_many(b.get_text(b.get_start_iter(), b.get_end_iter(), False))
 
         d.connect("response", done)
+        # Enter is a new line here (several links); Ctrl+Enter adds, like the web interface
+        keys = Gtk.ShortcutController(propagation_phase=Gtk.PropagationPhase.CAPTURE)
+        submit = Gtk.CallbackAction.new(lambda *_: (d.emit("response", "ok"), d.close(), True)[2])
+        keys.add_shortcut(Gtk.Shortcut(trigger=Gtk.ShortcutTrigger.parse_string("<Control>Return|<Control>KP_Enter"),
+                                       action=submit))
+        tv.add_controller(keys)
         d.present(self)
         tv.grab_focus()
 

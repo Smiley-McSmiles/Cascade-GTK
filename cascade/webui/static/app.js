@@ -203,12 +203,18 @@ function menu(anchor, items, align) {
   return popover(anchor, box, align);
 }
 const dialogs = [];
-function dialog({ title, width, height, start, end, body, onclose, cls }) {
-  const bd = h("div", { class: "backdrop" });
+let lastDialogClosed = 0;
+// a dialog that replaces another (Add Magnet Links -> Add Torrent) keeps the shade instead of fading it in again
+function backdrop(cls) {
+  const chained = dialogs.length > 0 || performance.now() - lastDialogClosed < 400;
+  return h("div", { class: "backdrop" + (cls ? " " + cls : "") + (chained ? " chained" : "") });
+}
+function dialog({ title, width, height, start, end, body, onclose, cls, defaultBtn }) {
+  const bd = backdrop();
   const dlg = h("div", { class: "dialog " + (cls || ""), role: "dialog", "aria-modal": "true", "aria-label": title,
     style: `--w:${width || 560}px;--h:${height || 720}px` });
-  const close = () => { bd.remove(); const i = dialogs.indexOf(entry); if (i >= 0) dialogs.splice(i, 1); if (onclose) onclose(); };
-  const entry = { close, el: dlg };
+  const close = () => { bd.remove(); lastDialogClosed = performance.now(); const i = dialogs.indexOf(entry); if (i >= 0) dialogs.splice(i, 1); if (onclose) onclose(); };
+  const entry = { close, el: dlg, defaultBtn };
   const head = h("div", { class: "dhead" }, start || null, h("div", { class: "dtitle", text: title || "" }),
     h("div", { class: "end" }, end !== undefined ? end : iconBtn("close", "Close", close, "circular")));
   dlg.append(head, body);
@@ -219,14 +225,16 @@ function dialog({ title, width, height, start, end, body, onclose, cls }) {
   return entry;
 }
 function alertDialog({ heading, body, extra, responses, onresponse }) {
-  const bd = h("div", { class: "backdrop alert-backdrop" });
+  const bd = backdrop("alert-backdrop");
   const content = h("div", { class: "dbody" }, h("h2", { text: heading }), body ? h("p", { text: body }) : null, extra || null);
   const foot = h("div", { class: "dfoot" });
   const dlg = h("div", { class: "dialog alert", role: "alertdialog", style: "--w:400px" }, content, foot);
-  const entry = { close: () => { bd.remove(); dialogs.splice(dialogs.indexOf(entry), 1); }, el: dlg };
+  const entry = { close: () => { bd.remove(); lastDialogClosed = performance.now(); dialogs.splice(dialogs.indexOf(entry), 1); }, el: dlg };
   for (const [id, label, appearance] of responses) {
-    foot.append(h("button", { class: appearance || "", text: label,
-      onclick: () => { entry.close(); if (onresponse) onresponse(id); } }));
+    const b = h("button", { class: appearance || "", text: label,
+      onclick: () => { entry.close(); if (onresponse) onresponse(id); } });
+    if (appearance === "suggested") entry.defaultBtn = b;     // never a destructive one: Enter must not delete
+    foot.append(b);
   }
   bd.append(dlg);
   document.body.append(bd);
@@ -239,7 +247,7 @@ function askText(heading, placeholder, button, cb, text = "", body = "") {
   const inp = h("input", { class: "entry", placeholder, value: text, style: "width:100%" });
   const d = alertDialog({ heading, body, extra: inp, responses: [["cancel", "Cancel"], ["ok", button, "suggested"]],
     onresponse: (r) => { if (r === "ok" && inp.value.trim()) cb(inp.value.trim()); } });
-  inp.addEventListener("keydown", (e) => { if (e.key === "Enter" && inp.value.trim()) { d.close(); cb(inp.value.trim()); } });
+  inp.addEventListener("keydown", (e) => { if (e.key === "Enter" && inp.value.trim()) { e.preventDefault(); d.close(); cb(inp.value.trim()); } });
 }
 
 // ------------------------------------------------------------------ rows (the libadwaita row types)
@@ -292,6 +300,7 @@ function entryRow(title, value, onapply, { password, placeholder } = {}) {
   const inp = h("input", { type: password ? "password" : "text", placeholder: placeholder || title, value: value || "", "aria-label": title });
   const apply = h("button", { class: "btn suggested circular icon-only hidden", "aria-label": "Apply", onclick: () => { apply.classList.add("hidden"); onapply(inp.value); } }, icon("check"));
   inp.addEventListener("input", () => apply.classList.remove("hidden"));
+  // Enter applies and, inside a dialog, also reaches its main button (like an entry that activates the default)
   inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { apply.classList.add("hidden"); onapply(inp.value); } });
   const el = h("div", { class: "entry-row" }, inp, apply);
   el.input = inp;
@@ -1143,7 +1152,7 @@ function addDialog(src, info) {
     body.append(g);
     upd();
   }
-  const d = dialog({ title: "Add Torrent", width: 560, height: 720, body, start: h("button", { class: "btn", text: "Cancel", onclick: () => d.close() }), end: addBtn });
+  const d = dialog({ title: "Add Torrent", width: 560, height: 720, body, start: h("button", { class: "btn", text: "Cancel", onclick: () => d.close() }), end: addBtn, defaultBtn: addBtn });
   addBtn.addEventListener("click", () => {
     const opts = {};
     for (const [k, inp] of Object.entries(sw)) opts[k] = inp.checked;
@@ -1182,7 +1191,7 @@ function folderPicker(title, start, cb) {
     cur = p; setText(pathLbl, p + "  ·  will be created"); list.replaceChildren(row("New folder", p));
   }) });
   const body = h("div", { class: "dbody" }, h("div", { class: "group-head" }, h("div", { class: "gtext" }, h("div", { class: "group-title", text: "Location on the Cascade computer" }), pathLbl), newBtn), list);
-  const d = dialog({ title, width: 520, height: 600, body, start: h("button", { class: "btn", text: "Cancel", onclick: () => d.close() }), end: choose });
+  const d = dialog({ title, width: 520, height: 600, body, start: h("button", { class: "btn", text: "Cancel", onclick: () => d.close() }), end: choose, defaultBtn: choose });
   choose.addEventListener("click", () => { d.close(); cb(cur); });
   load(start || "");
 }
@@ -1540,6 +1549,20 @@ document.addEventListener("keydown", (e) => {
     if (S.selection) { setSelection(false); return; }
     if (S.searchBar && !S.searchBar.classList.contains("hidden")) { toggleSearch(false); return; }
     if (S.filterBar && S.filterBar.classList.contains("open")) { toggleFilterBar(false); return; }
+  }
+  if (e.key === "Enter" && dialogs.length && !openPopover && !e.isComposing && !e.defaultPrevented) {
+    // Enter activates the dialog's main button (Add, Select...), like a default widget in GTK.  Not on a focused
+    // button, link or list (they act themselves), and in a text box only with Ctrl+Enter (Enter is a new line)
+    const top = dialogs[dialogs.length - 1];
+    const a = document.activeElement || document.body;
+    const own = a.closest && a.closest("button, a, select, summary, [role=button], [role=switch], [contenteditable]");
+    const multi = a.tagName === "TEXTAREA";
+    if (top.defaultBtn && !top.defaultBtn.disabled && top.el.isConnected && (!a.closest || !a.closest(".dialog") || top.el.contains(a))
+        && !own && (!multi || e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      top.defaultBtn.click();
+      return;
+    }
   }
   if (!S.connected) return;
   const ctrl = e.ctrlKey || e.metaKey;

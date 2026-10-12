@@ -228,7 +228,10 @@ select.select option { background: var(--popover-bg); color: var(--window-fg); }
 }
 .expander.open > .ewrap > .content { visibility: visible; transition-delay: 0s; }
 .expander > .ewrap > .content > .row { padding-left: 18px; }
-@media (prefers-reduced-motion: reduce) { .expander > .ewrap, .reveal, .rolldown { transition: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .expander > .ewrap, .reveal, .rolldown { transition: none; }
+  .backdrop, .dialog { animation: none; }
+}
 .row .prefix { flex: none; display: flex; align-items: center; color: var(--window-fg); }
 .row select.select { max-width: 100%; text-overflow: ellipsis; }
 .entry-row { display: flex; align-items: center; gap: 8px; min-height: 50px; padding: 4px 12px; border-top: 1px solid var(--fg-a07); }
@@ -320,15 +323,20 @@ input.check:checked::before {
 /* ---------- dialogs (Adw.Dialog) ---------- */
 .backdrop {
   position: fixed; inset: 0; background: rgba(0, 0, 0, 0.3); z-index: 30; display: flex; align-items: center; justify-content: center;
-  padding: 12px; animation: fade 150ms ease;
+  padding: 12px; animation: dim 150ms ease both;
 }
-@keyframes fade { from { opacity: 0; } }
+/* only the shade fades: fading the backdrop's opacity would fade the dialog inside it a second time, and two
+   opacity layers animating at once flicker (Firefox especially).  "both" holds the start state on the first
+   frame, so a dialog never flashes in fully drawn before its animation starts */
+@keyframes dim { from { background-color: rgba(0, 0, 0, 0); } }
+.backdrop.chained { animation: none; }      /* one dialog replacing another: the shade stays, no flash */
 .dialog {
   background: var(--dialog-bg); border-radius: 14px; width: min(var(--w, 560px), 100%); max-height: min(var(--h, 720px), 100%);
-  display: flex; flex-direction: column; overflow: hidden; animation: pop 180ms ease;
+  display: flex; flex-direction: column; overflow: hidden; animation: pop 180ms ease both;
+  will-change: transform, opacity; backface-visibility: hidden;
   box-shadow: 0 1px 5px 1px rgba(0, 0, 0, 0.09), 0 2px 14px 3px rgba(0, 0, 0, 0.05), 0 0 0 1px var(--fg-a07);
 }
-@keyframes pop { from { transform: scale(0.94); opacity: 0; } }
+@keyframes pop { from { transform: scale(0.94); opacity: 0; } to { transform: none; opacity: 1; } }
 .dialog .dhead { display: flex; align-items: center; gap: 6px; padding: 6px; min-height: 47px; position: relative; flex: none; }
 .dialog .dhead .dtitle { position: absolute; left: 50%; transform: translateX(-50%); font-weight: 700; white-space: nowrap; }
 .dialog .dhead .end { margin-left: auto; display: flex; gap: 6px; }
